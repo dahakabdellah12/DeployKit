@@ -64,4 +64,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/deploykit-api:latest,ghcr.io/${{ github.repository }}/deploykit-api:${{ github.ref_name }}
+          tags: ghcr.io/dahakabdellah12/deploykit/deploykit-api:latest,ghcr.io/dahakabdellah12/deploykit/deploykit-api:${{ github.ref_name }}
