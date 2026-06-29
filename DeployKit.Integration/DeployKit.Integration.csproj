@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <IsPackable>true</IsPackable>
+    <PackageId>DeployKit.Integration</PackageId>
+    <Version>1.0.0</Version>
+    <Title>DeployKit Integration SDK</Title>
+    <Description>One-line update SDK for .NET desktop apps. Check and apply delta updates from DeployKit Cloud.</Description>
+    <Authors>DeployKit</Authors>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/your/deploykit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/your/deploykit</RepositoryUrl>
+    <PackageTags>update;deploy;delta;auto-update;deploykit</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeployKit.Core\DeployKit.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeployKit.Updater\DeployKit.Updater.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Target Name="CopyUpdater" AfterTargets="Build" Inputs="$(MSBuildProjectDirectory)/../DeployKit.Updater/bin/$(Configuration)/net8.0-windows/DeployKit.Updater.exe" Outputs="$(TargetDir)DeployKit.Updater.exe">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../DeployKit.Updater/bin/$(Configuration)/net8.0-windows/DeployKit.Updater.exe"
+          DestinationFiles="$(TargetDir)DeployKit.Updater.exe"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

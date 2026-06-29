@@ -1,0 +1,11 @@
+## .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+Thumbs.db

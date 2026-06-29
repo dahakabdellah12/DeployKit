@@ -1,0 +1,56 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Sidebar (always dark, same in both themes) -->
+    <SolidColorBrush x:Key="SidebarBg" Color="#1A1B2F"/>
+    <SolidColorBrush x:Key="SidebarItemBg" Color="Transparent"/>
+    <SolidColorBrush x:Key="SidebarItemHover" Color="#2D2E4A"/>
+    <SolidColorBrush x:Key="SidebarItemSelected" Color="#3D3E5C"/>
+    <SolidColorBrush x:Key="SidebarText" Color="#9A9BB5"/>
+    <SolidColorBrush x:Key="SidebarTextSelected" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SidebarAccent" Color="#6366F1"/>
+    <SolidColorBrush x:Key="SidebarDivider" Color="#2D2E4A"/>
+
+    <!-- Content -->
+    <SolidColorBrush x:Key="ContentBg" Color="#F5F6FA"/>
+    <SolidColorBrush x:Key="CardBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="CardBorder" Color="#E2E5F0"/>
+    <SolidColorBrush x:Key="CardShadow" Color="#1A000000"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#1A1B2E"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#6B7280"/>
+    <SolidColorBrush x:Key="TextMuted" Color="#9CA3AF"/>
+
+    <!-- Accent -->
+    <SolidColorBrush x:Key="Primary" Color="#4F46E5"/>
+    <SolidColorBrush x:Key="PrimaryHover" Color="#4338CA"/>
+    <SolidColorBrush x:Key="PrimaryLight" Color="#EEF2FF"/>
+    <SolidColorBrush x:Key="Success" Color="#10B981"/>
+    <SolidColorBrush x:Key="SuccessLight" Color="#ECFDF5"/>
+    <SolidColorBrush x:Key="Warning" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="WarningLight" Color="#FFFBEB"/>
+    <SolidColorBrush x:Key="Danger" Color="#EF4444"/>
+    <SolidColorBrush x:Key="DangerLight" Color="#FEF2F2"/>
+    <SolidColorBrush x:Key="Info" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="InfoLight" Color="#EFF6FF"/>
+
+    <!-- Input -->
+    <SolidColorBrush x:Key="InputBg" Color="#F9FAFB"/>
+    <SolidColorBrush x:Key="InputBorder" Color="#D1D5DB"/>
+    <SolidColorBrush x:Key="InputFocusBorder" Color="#6366F1"/>
+
+    <!-- Progress -->
+    <SolidColorBrush x:Key="ProgressBg" Color="#E5E7EB"/>
+    <SolidColorBrush x:Key="ProgressFill" Color="#4F46E5"/>
+
+    <!-- Severity colors for file changes -->
+    <SolidColorBrush x:Key="AddedColor" Color="#10B981"/>
+    <SolidColorBrush x:Key="ModifiedColor" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="DeletedColor" Color="#EF4444"/>
+    <SolidColorBrush x:Key="UnchangedColor" Color="#9CA3AF"/>
+
+    <!-- Header bar -->
+    <SolidColorBrush x:Key="HeaderBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="HeaderBorder" Color="#E2E5F0"/>
+</ResourceDictionary>

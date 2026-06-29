@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: deploykit-api
+    env: dotnet
+    buildCommand: dotnet publish DeployKit.Cloud.Api/DeployKit.Cloud.Api.csproj -c Release -o out
+    startCommand: dotnet out/DeployKit.Cloud.Api.dll
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:80
+      - key: ConnectionStrings__Sqlite
+        value: Data Source=/data/deploykit.db
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
