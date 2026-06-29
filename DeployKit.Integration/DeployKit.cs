@@ -1,5 +1,6 @@
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using DeployKit.Integration.Models;
 using DeployKit.Integration.Services;
 
@@ -12,6 +13,9 @@ public static class DeployKit
     private static readonly string ConfigPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "DeployKit", "sdk_config.json");
+    private static readonly string RollbackInfoPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "DeployKit", "rollback.json");
 
     public static void Configure(string appKey, string? cloudUrl = null)
     {
@@ -49,15 +53,70 @@ public static class DeployKit
         return await _client.CheckAsync(_config);
     }
 
-    public static async Task<bool> DownloadAndApplyAsync(UpdateResult result, string downloadDir)
+    public static RollbackInfo? GetRollbackInfo()
     {
-        if (_client == null) return false;
+        try
+        {
+            if (!File.Exists(RollbackInfoPath))
+                return null;
 
-        Directory.CreateDirectory(downloadDir);
-        var zipPath = Path.Combine(downloadDir, $"update_{Guid.NewGuid():N}.zip");
+            var json = File.ReadAllText(RollbackInfoPath);
+            return JsonSerializer.Deserialize<RollbackInfo>(json);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
-        await _client.DownloadPackageAsync(result.DownloadUrl, zipPath);
-        return true;
+    public static async Task<string> RollbackAsync()
+    {
+        var info = GetRollbackInfo();
+        if (info == null)
+            return "No rollback backup found.";
+
+        if (!Directory.Exists(info.BackupPath))
+            return $"Rollback backup directory not found: {info.BackupPath}";
+
+        try
+        {
+            var rollback = new Core.Services.RollbackService(
+                Path.GetDirectoryName(info.BackupPath)!);
+
+            rollback.Restore(info.BackupPath, info.TargetDir);
+            rollback.Cleanup(info.BackupPath);
+
+            if (File.Exists(RollbackInfoPath))
+                File.Delete(RollbackInfoPath);
+
+            return string.Empty;
+        }
+        catch (Exception ex)
+        {
+            return $"Rollback failed: {ex.Message}";
+        }
+    }
+
+    internal static void SaveRollbackInfo(string backupPath, string targetDir, string previousVersion)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(RollbackInfoPath)!;
+            Directory.CreateDirectory(dir);
+
+            var info = new RollbackInfo
+            {
+                BackupPath = backupPath,
+                TargetDir = targetDir,
+                PreviousVersion = previousVersion,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            File.WriteAllText(RollbackInfoPath, JsonSerializer.Serialize(info));
+        }
+        catch
+        {
+        }
     }
 
     private static async Task CheckAndNotifyAsync()
@@ -74,9 +133,17 @@ public static class DeployKit
                 });
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Silent fail - don't crash the app
+            System.Diagnostics.Debug.WriteLine($"[DeployKit] Auto-check failed: {ex.Message}");
         }
     }
+}
+
+public class RollbackInfo
+{
+    public string BackupPath { get; set; } = "";
+    public string TargetDir { get; set; } = "";
+    public string PreviousVersion { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
 }

@@ -24,6 +24,13 @@ public partial class UpdateWindow : Window
 
         if (result.IsMandatory)
             LaterBtn.IsEnabled = false;
+
+        var rollbackInfo = DeployKit.GetRollbackInfo();
+        if (rollbackInfo != null)
+        {
+            RollbackBtn.Visibility = Visibility.Visible;
+            RollbackBtn.Content = $"↩️  رجوع إلى v{rollbackInfo.PreviousVersion}";
+        }
     }
 
     private async void OnUpdateClick(object sender, RoutedEventArgs e)
@@ -50,8 +57,7 @@ public partial class UpdateWindow : Window
             var targetDir = AppDomain.CurrentDomain.BaseDirectory;
             var exeName = Path.GetFileName(Environment.ProcessPath!);
             var pid = Environment.ProcessId;
-
-            var args = $"--zip \"{zipPath}\" --target \"{targetDir}\" --app \"{exeName}\" --pid {pid}";
+            var args = $"--zip \"{zipPath}\" --target \"{targetDir}\" --app \"{exeName}\" --pid {pid} --prev {_config.CurrentVersion}";
 
             Process.Start(new ProcessStartInfo
             {
@@ -79,5 +85,37 @@ public partial class UpdateWindow : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    private async void OnRollbackClick(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this,
+                "هل تريد الرجوع للإصدار السابق؟",
+                "رجوع",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        RollbackBtn.IsEnabled = false;
+        ProgressPanel.Visibility = Visibility.Visible;
+        ProgressLabel.Text = "جارٍ الرجوع للإصدار السابق...";
+
+        var error = await DeployKit.RollbackAsync();
+        if (!string.IsNullOrEmpty(error))
+        {
+            MessageBox.Show(this, error, "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
+            RollbackBtn.IsEnabled = true;
+            ProgressPanel.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            MessageBox.Show(this,
+                "تم الرجوع للإصدار السابق بنجاح.",
+                "تم",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            DialogResult = true;
+            Close();
+        }
     }
 }

@@ -9,35 +9,67 @@ public class PackageApplier
     private readonly HashService _hashService = new();
     private readonly BinaryPatchService _patchService = new();
     private readonly RollbackService _rollback;
+    private readonly EncryptionService? _encryption;
 
     public string? BackupPath { get; private set; }
+    private string? _decryptedPath;
 
-    public PackageApplier(string backupDir)
+    public PackageApplier(string backupDir, EncryptionService? encryption = null)
     {
         _rollback = new RollbackService(backupDir);
+        _encryption = encryption;
+    }
+
+    private string ResolvePath(string packagePath)
+    {
+        if (_encryption == null) return packagePath;
+
+        if (_decryptedPath == null)
+        {
+            _decryptedPath = packagePath + ".dec";
+            _encryption.DecryptFileAsync(packagePath, _decryptedPath).GetAwaiter().GetResult();
+        }
+        return _decryptedPath;
+    }
+
+    private void Cleanup()
+    {
+        if (_decryptedPath != null && File.Exists(_decryptedPath))
+        {
+            File.Delete(_decryptedPath);
+            _decryptedPath = null;
+        }
     }
 
     public async Task<PackageManifest> LoadManifestAsync(string packagePath)
     {
-        using var archive = ZipFile.OpenRead(packagePath);
+        var actualPath = ResolvePath(packagePath);
+
+        if (!File.Exists(actualPath))
+            throw new InvalidOperationException("Package file not found");
+
+        using var archive = ZipFile.OpenRead(actualPath);
         var entry = archive.GetEntry("manifest.json")
             ?? throw new InvalidOperationException("manifest.json not found in package");
 
         using var reader = new StreamReader(entry.Open());
         var json = await reader.ReadToEndAsync();
-        return JsonSerializer.Deserialize<PackageManifest>(json)
+        var manifest = JsonSerializer.Deserialize<PackageManifest>(json)
             ?? throw new InvalidOperationException("Invalid manifest.json");
+
+        return manifest;
     }
 
     public async Task ApplyAsync(string packagePath, string targetDir)
     {
+        var actualPath = ResolvePath(packagePath);
         var manifest = await LoadManifestAsync(packagePath);
 
         BackupPath = _rollback.CreateBackup(targetDir);
 
         try
         {
-            using var archive = ZipFile.OpenRead(packagePath);
+            using var archive = ZipFile.OpenRead(actualPath);
 
             foreach (var deleted in manifest.Deleted)
             {
@@ -112,7 +144,10 @@ public class PackageApplier
             _rollback.Restore(BackupPath, targetDir);
             _rollback.Cleanup(BackupPath);
             BackupPath = null;
+            Cleanup();
             throw;
         }
+
+        Cleanup();
     }
 }

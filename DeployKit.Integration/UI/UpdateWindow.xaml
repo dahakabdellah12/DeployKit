@@ -110,6 +110,11 @@
                     Style="{StaticResource SecondaryButton}"
                     Margin="12,0,0,0"
                     Click="OnLaterClick"/>
+            <Button x:Name="RollbackBtn" Content="↩️  الرجوع للإصدار السابق"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="12,0,0,0"
+                    Click="OnRollbackClick"
+                    Visibility="Collapsed"/>
         </StackPanel>
     </Grid>
 </Window>

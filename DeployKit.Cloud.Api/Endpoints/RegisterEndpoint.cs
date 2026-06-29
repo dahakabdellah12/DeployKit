@@ -10,18 +10,25 @@ public static class RegisterEndpoint
     {
         app.MapPost("/v1/register", async (string name, AppDbContext db) =>
         {
-            if (string.IsNullOrWhiteSpace(name))
-                return Results.BadRequest(new { error = "App name is required" });
-
-            var appKey = Guid.NewGuid().ToString("N")[..12];
-            db.Apps.Add(new AppRegistration
+            try
             {
-                AppKey = appKey,
-                AppName = name
-            });
+                if (string.IsNullOrWhiteSpace(name))
+                    return Results.BadRequest(new { error = "App name is required" });
 
-            await db.SaveChangesAsync();
-            return Results.Ok(new { appKey, appName = name });
+                var appKey = Guid.NewGuid().ToString("N")[..12];
+                db.Apps.Add(new AppRegistration
+                {
+                    AppKey = appKey,
+                    AppName = name
+                });
+
+                await db.SaveChangesAsync();
+                return Results.Ok(new { appKey, appName = name });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
         });
     }
 }
