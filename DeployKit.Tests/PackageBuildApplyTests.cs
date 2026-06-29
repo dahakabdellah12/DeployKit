@@ -27,9 +27,9 @@ public class PackageBuildApplyTests
         await File.WriteAllBytesAsync(Path.Combine(newDir.Path, "binary.dat"), newBytes);
 
         var comparison = await _comparer.CompareAsync(oldDir.Path, newDir.Path);
-        Assert.Equal(1, comparison.Added.Count);
-        Assert.Equal(1, comparison.Modified.Count);
-        Assert.Equal(1, comparison.Deleted.Count);
+        Assert.Single(comparison.Added);
+        Assert.Single(comparison.Modified);
+        Assert.Single(comparison.Deleted);
 
         // Build unencrypted package
         var builder = new PackageBuilder();
