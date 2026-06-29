@@ -10,6 +10,8 @@ services:
         value: http://0.0.0.0:80
       - key: ConnectionStrings__Sqlite
         value: Data Source=/data/deploykit.db
+      - key: AdminKey
+        value: admin
     disk:
       name: data
       mountPath: /data

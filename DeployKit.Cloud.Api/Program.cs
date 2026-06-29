@@ -24,12 +24,18 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    Directory.CreateDirectory(storagePath);
 }
 
 app.UseCors();
+app.UseStaticFiles();
+
 RegisterEndpoint.Map(app);
 UploadEndpoint.Map(app, storagePath);
 CheckEndpoint.Map(app);
 DownloadEndpoint.Map(app, storagePath);
+AdminEndpoint.Map(app, storagePath);
+
+app.MapFallbackToFile("index.html");
 
 app.Run();

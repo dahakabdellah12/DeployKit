@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeployKit Dashboard</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:system-ui,sans-serif; background:#0f0f13; color:#e4e4e7; min-height:100vh; }
+  .container { max-width:1200px; margin:0 auto; padding:24px; }
+  h1 { font-size:24px; font-weight:600; margin-bottom:24px; color:#fafafa; }
+  h1 small { font-size:14px; font-weight:400; color:#a1a1aa; margin-right:12px; }
+  .card { background:#18181b; border:1px solid #27272a; border-radius:10px; padding:20px; margin-bottom:20px; }
+  .card h2 { font-size:16px; font-weight:600; margin-bottom:12px; color:#d4d4d8; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:right; padding:10px 8px; border-bottom:1px solid #27272a; }
+  th { color:#a1a1aa; font-weight:500; font-size:12px; text-transform:uppercase; }
+  td { color:#e4e4e7; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+  .badge-green { background:#166534; color:#86efac; }
+  .badge-yellow { background:#854d0e; color:#fde68a; }
+  .badge-gray { background:#27272a; color:#a1a1aa; }
+  .btn { display:inline-block; padding:6px 14px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; border:none; text-decoration:none; }
+  .btn-primary { background:#3b82f6; color:white; }
+  .btn-primary:hover { background:#2563eb; }
+  .btn-danger { background:#dc2626; color:white; }
+  .btn-danger:hover { background:#b91c1c; }
+  .btn-sm { padding:4px 10px; font-size:12px; }
+  .empty { text-align:center; padding:40px; color:#71717a; }
+  .login-box { max-width:400px; margin:80px auto; text-align:center; }
+  .login-box input { width:100%; padding:10px 14px; border-radius:6px; border:1px solid #27272a; background:#18181b; color:#e4e4e7; font-size:15px; margin:12px 0; }
+  .login-box input:focus { outline:none; border-color:#3b82f6; }
+  .error { color:#f87171; font-size:13px; margin-top:8px; }
+  .header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+  .header-bar .app-info { font-size:14px; color:#a1a1aa; }
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .detail-grid .card:nth-child(3) { grid-column:span 2; }
+  .mt-12 { margin-top:12px; }
+  .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:100; }
+  .modal { background:#18181b; border:1px solid #27272a; border-radius:12px; padding:24px; max-width:500px; width:90%; }
+  .modal h3 { margin-bottom:16px; }
+  .modal .form-group { margin-bottom:12px; }
+  .modal label { display:block; font-size:13px; color:#a1a1aa; margin-bottom:4px; }
+  .modal input, .modal textarea { width:100%; padding:8px 12px; border-radius:6px; border:1px solid #27272a; background:#0f0f13; color:#e4e4e7; font-size:14px; }
+  .modal textarea { resize:vertical; min-height:60px; }
+  .modal .btn-row { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+  .hidden { display:none !important; }
+  .stat { text-align:center; padding:16px; }
+  .stat-value { font-size:28px; font-weight:700; color:#fafafa; }
+  .stat-label { font-size:12px; color:#71717a; margin-top:4px; }
+  @media(max-width:768px) { .detail-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="login" class="login-box container">
+  <h1>DeployKit Dashboard</h1>
+  <div class="card">
+    <input type="password" id="adminKey" placeholder="Admin Key" onkeydown="if(event.key==='Enter') login()">
+    <button class="btn btn-primary" onclick="login()" style="width:100%">دخول</button>
+    <div id="loginError" class="error hidden"></div>
+  </div>
+</div>
+
+<div id="app" class="container hidden">
+  <div class="header-bar">
+    <h1>DeployKit Dashboard</h1>
+    <div>
+      <button class="btn btn-primary btn-sm" onclick="showUploadModal()">➕ رفع تحديث</button>
+      <button class="btn btn-sm" style="color:#a1a1aa" onclick="logout()">تسجيل خروج</button>
+    </div>
+  </div>
+
+  <div id="statsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px"></div>
+
+  <div class="card">
+    <h2>التطبيقات المسجلة</h2>
+    <table>
+      <thead><tr><th>التطبيق</th><th>API Key</th><th>الإصدار</th><th>التحديثات</th><th>التاريخ</th><th></th></tr></thead>
+      <tbody id="appsBody"></tbody>
+    </table>
+    <div id="appsEmpty" class="empty hidden">لا توجد تطبيقات مسجلة بعد</div>
+  </div>
+
+  <div id="appDetail" class="hidden">
+    <button class="btn btn-sm" onclick="hideDetail()" style="color:#a1a1aa;margin-bottom:12px">← رجوع</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<div id="uploadModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>رفع تحديث جديد</h3>
+    <div class="form-group">
+      <label>API Key</label>
+      <input id="upKey" placeholder="مفتاح التطبيق">
+    </div>
+    <div class="form-group">
+      <label>من إصدار</label>
+      <input id="upFrom" placeholder="1.0.0">
+    </div>
+    <div class="form-group">
+      <label>إلى إصدار</label>
+      <input id="upTo" placeholder="1.1.0">
+    </div>
+    <div class="form-group">
+      <label>ملاحظات الإصدار</label>
+      <textarea id="upNotes" placeholder="ما الجديد في هذا الإصدار..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>ملف التحديث (ZIP)</label>
+      <input type="file" id="upFile" accept=".zip">
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#a1a1aa;margin-top:8px">
+      <input type="checkbox" id="upMandatory"> تحديث إجباري
+    </label>
+    <div class="btn-row">
+      <button class="btn" onclick="hideUploadModal()" style="background:#27272a;color:#e4e4e7">إلغاء</button>
+      <button class="btn btn-primary" onclick="uploadUpdate()">رفع</button>
+    </div>
+    <div id="uploadStatus" class="error hidden mt-12"></div>
+  </div>
+</div>
+
+<script>
+let adminKey = '';
+let baseUrl = window.location.origin;
+
+function login() {
+  const key = document.getElementById('adminKey').value.trim();
+  if (!key) return;
+  adminKey = key;
+  document.getElementById('loginError').classList.add('hidden');
+  loadApps();
+}
+
+function logout() {
+  adminKey = '';
+  document.getElementById('login').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'X-Admin-Key': adminKey } };
+  if (body && typeof body === 'object' && !(body instanceof FormData)) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(baseUrl + path, opts);
+  if (res.status === 401) { logout(); return null; }
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.statusText); }
+  return res.status === 204 ? null : res.json();
+}
+
+async function loadApps() {
+  try {
+    const apps = await api('GET', '/v1/admin/apps');
+    if (!apps) return;
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    renderApps(apps);
+  } catch(e) {
+    document.getElementById('loginError').textContent = e.message;
+    document.getElementById('loginError').classList.remove('hidden');
+  }
+}
+
+function renderApps(apps) {
+  const body = document.getElementById('appsBody');
+  const empty = document.getElementById('appsEmpty');
+  body.innerHTML = '';
+  if (!apps || apps.length === 0) { empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  apps.forEach(a => {
+    body.innerHTML += `<tr>
+      <td><a href="#" onclick="showApp('${a.appKey}');return false" style="color:#60a5fa;text-decoration:none">${a.appName}</a></td>
+      <td style="font-family:monospace;font-size:12px">${a.appKey}</td>
+      <td><span class="badge badge-green">v${a.currentVersion}</span></td>
+      <td>${a.packageCount}</td>
+      <td style="font-size:12px;color:#a1a1aa">${new Date(a.createdAt).toLocaleDateString('ar-SA')}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteApp('${a.appKey}')">حذف</button></td>
+    </tr>`;
+  });
+
+  const stats = document.getElementById('statsRow');
+  stats.innerHTML = `
+    <div class="card stat"><div class="stat-value">${apps.length}</div><div class="stat-label">تطبيق مسجل</div></div>
+    <div class="card stat"><div class="stat-value">${apps.reduce((s,a) => s + a.packageCount, 0)}</div><div class="stat-label">تحديث مرفوع</div></div>
+  `;
+}
+
+async function showApp(key) {
+  try {
+    const d = await api('GET', `/v1/admin/apps/${key}`);
+    if (!d) return;
+    document.getElementById('appsBody').parentElement.parentElement.classList.add('hidden');
+    document.getElementById('appDetail').classList.remove('hidden');
+    const html = `
+      <div class="detail-grid">
+        <div class="card">
+          <h2>${d.appName}</h2>
+          <div style="font-family:monospace;font-size:12px;color:#a1a1aa">${d.appKey}</div>
+          <div style="margin-top:8px"><span class="badge badge-green">v${d.currentVersion}</span></div>
+          <div style="margin-top:8px;font-size:12px;color:#71717a">${new Date(d.createdAt).toLocaleDateString('ar-SA')}</div>
+        </div>
+        <div class="card">
+          <h2>حذف التطبيق</h2>
+          <div style="font-size:13px;color:#a1a1aa;margin-bottom:12px">هذا سيحذف التطبيق وكل تحديثاته</div>
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('متأكد؟')) { deleteApp('${d.appKey}'); hideDetail(); }">حذف التطبيق</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>التحديثات (${d.packages.length})</h2>
+        <table>
+          <thead><tr><th>#</th><th>من</th><th>إلى</th><th>الحجم</th><th>إجباري</th><th>التاريخ</th><th></th></tr></thead>
+          <tbody>
+            ${d.packages.length === 0 ? '<tr><td colspan="7" class="empty">لا توجد تحديثات</td></tr>' :
+            d.packages.map(p => `<tr>
+              <td>${p.id}</td>
+              <td><span class="badge badge-gray">v${p.fromVersion}</span></td>
+              <td><span class="badge badge-green">v${p.toVersion}</span></td>
+              <td>${(p.fileSize / 1024).toFixed(1)} KB</td>
+              <td>${p.isMandatory ? '<span class="badge badge-yellow">إجباري</span>' : '<span class="badge badge-gray">اختياري</span>'}</td>
+              <td style="font-size:12px;color:#a1a1aa">${new Date(p.createdAt).toLocaleDateString('ar-SA')}</td>
+              <td><button class="btn btn-danger btn-sm" onclick="deletePackage(${p.id})">حذف</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${d.packages.length > 0 ? `<div class="card"><h2>آخر تحديث</h2><pre style="font-size:13px;color:#a1a1aa;white-space:pre-wrap;margin-top:8px">${d.packages[0].releaseNotes || 'لا توجد ملاحظات'}</pre></div>` : ''}
+    `;
+    document.getElementById('detailContent').innerHTML = html;
+  } catch(e) { alert(e.message); }
+}
+
+function hideDetail() {
+  document.getElementById('appDetail').classList.add('hidden');
+  document.getElementById('appsBody').parentElement.parentElement.classList.remove('hidden');
+}
+
+async function deleteApp(key) {
+  if (!confirm('حذف هذا التطبيق وكل تحديثاته؟')) return;
+  try {
+    await api('DELETE', `/v1/admin/apps/${key}`);
+    loadApps();
+  } catch(e) { alert(e.message); }
+}
+
+async function deletePackage(id) {
+  if (!confirm('حذف هذا التحديث؟')) return;
+  try {
+    await api('DELETE', `/v1/admin/packages/${id}`);
+    if (!document.getElementById('appDetail').classList.contains('hidden'))
+      document.getElementById('detailContent').innerHTML = '';
+    loadApps();
+    hideDetail();
+  } catch(e) { alert(e.message); }
+}
+
+function showUploadModal() { document.getElementById('uploadModal').classList.remove('hidden'); }
+function hideUploadModal() { document.getElementById('uploadModal').classList.add('hidden'); document.getElementById('uploadStatus').classList.add('hidden'); }
+
+async function uploadUpdate() {
+  const key = document.getElementById('upKey').value.trim();
+  const from = document.getElementById('upFrom').value.trim();
+  const to = document.getElementById('upTo').value.trim();
+  const notes = document.getElementById('upNotes').value.trim();
+  const file = document.getElementById('upFile').files[0];
+  const mandatory = document.getElementById('upMandatory').checked;
+  const status = document.getElementById('uploadStatus');
+
+  if (!key || !from || !to || !file) { status.textContent = 'الرجاء ملء جميع الحقول المطلوبة'; status.classList.remove('hidden'); return; }
+
+  try {
+    const bytes = await file.arrayBuffer();
+    const url = `${baseUrl}/v1/upload?key=${encodeURIComponent(key)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${notes ? '&notes=' + encodeURIComponent(notes) : ''}${mandatory ? '&mandatory=true' : ''}`;
+
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Admin-Key': adminKey }, body: bytes });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.statusText); }
+    const result = await res.json();
+    status.textContent = `✅ تم الرفع! v${from} → v${to} (${(result.fileSize / 1024).toFixed(1)} KB)`;
+    status.style.color = '#86efac';
+    status.classList.remove('hidden');
+    document.getElementById('upKey').value = '';
+    document.getElementById('upFrom').value = '';
+    document.getElementById('upTo').value = '';
+    document.getElementById('upNotes').value = '';
+    document.getElementById('upFile').value = '';
+    document.getElementById('upMandatory').checked = false;
+    loadApps();
+  } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }
+}
+
+if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+  const saved = localStorage.getItem('dk_admin_key');
+  if (saved) { adminKey = saved; loadApps(); }
+}
+</script>
+</body>
+</html>
