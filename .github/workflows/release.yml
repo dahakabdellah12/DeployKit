@@ -30,10 +30,14 @@ jobs:
       - name: Pack NuGet
         run: dotnet pack DeployKit.Integration/DeployKit.Integration.csproj --configuration Release --no-build -o artifacts
 
+      - name: NuGet login (OIDC → temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: dahakabdelhadi145
+
       - name: Upload NuGet to NuGet.org
-        run: |
-          $oidc = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL" -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
-          Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --api-key $oidc --skip-duplicate }
+        run: Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --skip-duplicate }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
