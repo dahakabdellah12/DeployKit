@@ -48,6 +48,9 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@v4
@@ -64,4 +67,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/dahakabdellah12/deploykit/deploykit-api:latest,ghcr.io/dahakabdellah12/deploykit/deploykit-api:${{ github.ref_name }}
+          tags: ghcr.io/dahakabdellah12/deploykit-api:latest,ghcr.io/dahakabdellah12/deploykit-api:${{ github.ref_name }}
