@@ -31,7 +31,9 @@ jobs:
         run: dotnet pack DeployKit.Integration/DeployKit.Integration.csproj --configuration Release --no-build -o artifacts
 
       - name: Upload NuGet to NuGet.org
-        run: Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --skip-duplicate }
+        run: |
+          $oidc = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://api.nuget.org" -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --api-key $oidc --skip-duplicate }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
