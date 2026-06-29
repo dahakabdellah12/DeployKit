@@ -1,0 +1,13 @@
+<Project>
+  <Target Name="_CopyDeployKitUpdater" AfterTargets="Build" Condition="'$(CopyDeployKitUpdater)' != 'false'">
+    <ItemGroup>
+      <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Updater.exe" />
+      <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Updater.dll" />
+      <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Core.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_DKUpdaterFiles)"
+          DestinationFolder="$(TargetDir)"
+          Condition="Exists('%(Identity)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

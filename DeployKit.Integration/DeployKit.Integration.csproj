@@ -5,37 +5,67 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+
     <IsPackable>true</IsPackable>
     <PackageId>DeployKit.Integration</PackageId>
     <Version>1.0.0</Version>
     <Title>DeployKit Integration SDK</Title>
-    <Description>One-line update SDK for .NET desktop apps. Check and apply delta updates from DeployKit Cloud.</Description>
+    <Description>One-line auto-update SDK for .NET WPF desktop apps. Detects version, checks cloud for delta updates, shows update UI, and applies via updater.exe. Includes DeployKit.Core delta engine.</Description>
     <Authors>DeployKit</Authors>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/your/deploykit</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/your/deploykit</RepositoryUrl>
-    <PackageTags>update;deploy;delta;auto-update;deploykit</PackageTags>
+    <PackageProjectUrl>https://github.com/dahakabdellah12/DeployKit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dahakabdellah12/DeployKit</RepositoryUrl>
+    <PackageTags>update;deploy;delta;auto-update;deploykit;wpf</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <!-- Build dependencies so outputs exist -->
+  <Target Name="_BuildUpdaterAndCore" BeforeTargets="Build">
+    <MSBuild Projects="..\DeployKit.Updater\DeployKit.Updater.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+    <MSBuild Projects="..\DeployKit.Core\DeployKit.Core.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <!-- Copy updater + Core DLL to target dir so they're available at runtime -->
+  <Target Name="_CopyUpdaterFiles" AfterTargets="_BuildUpdaterAndCore">
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.exe" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.dll" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Core\bin\$(Configuration)\net8.0\DeployKit.Core.dll" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <!-- Also copy to staging folder for packing -->
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.exe" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.dll" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Core\bin\$(Configuration)\net8.0\DeployKit.Core.dll" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Include updater files in the NuGet package -->
   <ItemGroup>
-    <ProjectReference Include="..\DeployKit.Core\DeployKit.Core.csproj" />
+    <None Include="$(TargetDir)updater_pack\DeployKit.Updater.exe" Pack="true" PackagePath="tools\DeployKit.Updater.exe" />
+    <None Include="$(TargetDir)updater_pack\DeployKit.Updater.dll" Pack="true" PackagePath="tools\DeployKit.Updater.dll" />
+    <None Include="$(TargetDir)updater_pack\DeployKit.Core.dll" Pack="true" PackagePath="tools\DeployKit.Core.dll" />
   </ItemGroup>
 
+  <!-- Include build targets file -->
   <ItemGroup>
-    <ProjectReference Include="..\DeployKit.Updater\DeployKit.Updater.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    <None Include="build\DeployKit.Integration.targets" Pack="true" PackagePath="build\DeployKit.Integration.targets" />
+  </ItemGroup>
+
+  <!-- Include README -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Project reference to Core (for compilation only, not a NuGet dependency) -->
+  <ItemGroup>
+    <ProjectReference Include="..\DeployKit.Core\DeployKit.Core.csproj">
+      <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
   </ItemGroup>
 
-  <Target Name="CopyUpdater" AfterTargets="Build" Inputs="$(MSBuildProjectDirectory)/../DeployKit.Updater/bin/$(Configuration)/net8.0-windows/DeployKit.Updater.exe" Outputs="$(TargetDir)DeployKit.Updater.exe">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/../DeployKit.Updater/bin/$(Configuration)/net8.0-windows/DeployKit.Updater.exe"
-          DestinationFiles="$(TargetDir)DeployKit.Updater.exe"
-          SkipUnchangedFiles="true" />
-  </Target>
-
+  <!-- Reference to Updater project (build only, no assembly reference) -->
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\" />
+    <ProjectReference Include="..\DeployKit.Updater\DeployKit.Updater.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

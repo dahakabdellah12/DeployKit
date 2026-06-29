@@ -4,6 +4,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>DeployKit.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Title>DeployKit Core</Title>
+    <Description>Delta update engine — file comparison, binary patching, package building/applying, rollback for .NET apps.</Description>
+    <Authors>DeployKit</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/dahakabdellah12/DeployKit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dahakabdellah12/DeployKit</RepositoryUrl>
+    <PackageTags>update;deploy;delta;binary-patch;deploykit</PackageTags>
   </PropertyGroup>
 
 </Project>
