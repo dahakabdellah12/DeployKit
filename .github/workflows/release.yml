@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment: release
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +31,7 @@ jobs:
         run: dotnet pack DeployKit.Integration/DeployKit.Integration.csproj --configuration Release --no-build -o artifacts
 
       - name: Upload NuGet to NuGet.org
-        run: dotnet nuget push artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
