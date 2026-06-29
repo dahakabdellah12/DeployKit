@@ -37,7 +37,7 @@ jobs:
           user: dahakabdelhadi145
 
       - name: Upload NuGet to NuGet.org
-        run: Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --skip-duplicate }
+        run: Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --skip-duplicate }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
