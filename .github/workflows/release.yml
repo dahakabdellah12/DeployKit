@@ -31,7 +31,7 @@ jobs:
         run: dotnet pack DeployKit.Integration/DeployKit.Integration.csproj --configuration Release --no-build -o artifacts
 
       - name: Upload NuGet to NuGet.org
-        run: dotnet nuget push artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: Get-ChildItem artifacts\*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --source https://api.nuget.org/v3/index.json --skip-duplicate }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
