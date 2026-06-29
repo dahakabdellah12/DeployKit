@@ -7,5 +7,20 @@ out/
 *.db
 *.db-shm
 *.db-wal
+*.nupkg
+*.log
+*.DotSettings*
+
+## IDs
 .DS_Store
 Thumbs.db
+.idea/
+
+## Runtime / Build output
+dist/
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+packages/
+DeployKit.Cloud.Api/Storage/
+DeployKit.Cloud.Api/packages/

@@ -69,17 +69,17 @@ public static class DeployKit
         }
     }
 
-    public static async Task<string> RollbackAsync()
+    public static Task<string> RollbackAsync()
     {
-        var info = GetRollbackInfo();
-        if (info == null)
-            return "No rollback backup found.";
-
-        if (!Directory.Exists(info.BackupPath))
-            return $"Rollback backup directory not found: {info.BackupPath}";
-
         try
         {
+            var info = GetRollbackInfo();
+            if (info == null)
+                return Task.FromResult("No rollback backup found.");
+
+            if (!Directory.Exists(info.BackupPath))
+                return Task.FromResult($"Rollback backup directory not found: {info.BackupPath}");
+
             var rollback = new Core.Services.RollbackService(
                 Path.GetDirectoryName(info.BackupPath)!);
 
@@ -89,11 +89,11 @@ public static class DeployKit
             if (File.Exists(RollbackInfoPath))
                 File.Delete(RollbackInfoPath);
 
-            return string.Empty;
+            return Task.FromResult(string.Empty);
         }
         catch (Exception ex)
         {
-            return $"Rollback failed: {ex.Message}";
+            return Task.FromResult($"Rollback failed: {ex.Message}");
         }
     }
 
