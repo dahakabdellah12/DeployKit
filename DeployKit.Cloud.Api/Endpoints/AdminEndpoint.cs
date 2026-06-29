@@ -4,6 +4,8 @@ using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
 
+public record RegisterRequest(string AppName);
+
 public static class AdminEndpoint
 {
     public static void Map(WebApplication app, string storagePath)
@@ -66,6 +68,29 @@ public static class AdminEndpoint
                     p.CreatedAt
                 })
             });
+        });
+
+        admin.MapPost("/register", async (RegisterRequest req, AppDbContext db) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(req.AppName))
+                    return Results.BadRequest(new { error = "App name is required" });
+
+                var appKey = Guid.NewGuid().ToString("N")[..12];
+                db.Apps.Add(new AppRegistration
+                {
+                    AppKey = appKey,
+                    AppName = req.AppName
+                });
+
+                await db.SaveChangesAsync();
+                return Results.Ok(new { appKey, appName = req.AppName });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
         });
 
         admin.MapDelete("/apps/{key}", async (string key, AppDbContext db) =>
