@@ -30,6 +30,7 @@ public static class AdminEndpoint
                 {
                     a.Id,
                     a.AppKey,
+                    a.MandatoryAppKey,
                     a.AppName,
                     a.CurrentVersion,
                     a.CreatedAt,
@@ -54,6 +55,7 @@ public static class AdminEndpoint
             {
                 app.Id,
                 app.AppKey,
+                app.MandatoryAppKey,
                 app.AppName,
                 app.CurrentVersion,
                 app.CreatedAt,
@@ -78,14 +80,16 @@ public static class AdminEndpoint
                     return Results.BadRequest(new { error = "App name is required" });
 
                 var appKey = Guid.NewGuid().ToString("N")[..12];
+                var mandatoryKey = "m_" + Guid.NewGuid().ToString("N")[..12];
                 db.Apps.Add(new AppRegistration
                 {
                     AppKey = appKey,
+                    MandatoryAppKey = mandatoryKey,
                     AppName = req.AppName
                 });
 
                 await db.SaveChangesAsync();
-                return Results.Ok(new { appKey, appName = req.AppName });
+                return Results.Ok(new { appKey, mandatoryKey, appName = req.AppName });
             }
             catch (Exception ex)
             {

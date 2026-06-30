@@ -37,12 +37,27 @@ public static class DeployKit
         try
         {
             var ver = Assembly.GetEntryAssembly()?.GetName().Version;
-            return ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "1.0.0";
+            if (ver == null) return "1.0.0";
+            var major = Math.Max(ver.Major, 0);
+            var minor = Math.Max(ver.Minor, 0);
+            var build = Math.Max(ver.Build, 0);
+            return $"{major}.{minor}.{build}";
         }
         catch
         {
             return "1.0.0";
         }
+    }
+
+    public static string GetCurrentVersion()
+    {
+        return _config?.CurrentVersion ?? DetectVersion();
+    }
+
+    public static async Task<string?> GetLatestVersionAsync()
+    {
+        var result = await CheckAsync();
+        return result.IsSuccess && result.HasUpdate ? result.LatestVersion : null;
     }
 
     public static async Task<UpdateResult> CheckAsync()
@@ -124,9 +139,9 @@ public static class DeployKit
         try
         {
             var result = await CheckAsync();
-            if (result.HasUpdate)
+            if (result.HasUpdate && System.Windows.Application.Current != null)
             {
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     var window = new UI.UpdateWindow(result, _config!);
                     window.ShowDialog();

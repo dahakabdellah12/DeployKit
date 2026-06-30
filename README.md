@@ -32,7 +32,7 @@
 | `DeployKit.Gui` | WPF desktop UI to build and apply update packages | `net8.0-windows` |
 | `DeployKit.Integration` | NuGet SDK: one-line `Configure()` → auto-check → update UI → launch updater | `net8.0-windows` |
 | `DeployKit.Updater` | Standalone console: waits for app exit → applies delta → restarts app | `net8.0-windows` |
-| `DeployKit.Tests` | xUnit tests for Core services (14 tests, all passing) | `net9.0` |
+
 
 ## Quick Start (SDK)
 
@@ -137,9 +137,6 @@ docker run -p 5000:80 -v deploykit-data:/data deploykit-api
 ```bash
 # Build all
 dotnet build DeployKit.sln
-
-# Run tests
-dotnet test DeployKit.Tests
 
 # Pack NuGet
 dotnet pack DeployKit.Integration -o artifacts

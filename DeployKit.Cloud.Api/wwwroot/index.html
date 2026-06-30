@@ -141,40 +141,54 @@
 <script>
 let adminKey = '';
 let baseUrl = window.location.origin;
+const STORAGE_KEY = 'dk_admin_key';
 
 function login() {
   const key = document.getElementById('adminKey').value.trim();
   if (!key) return;
   adminKey = key;
+  localStorage.setItem(STORAGE_KEY, key);
   document.getElementById('loginError').classList.add('hidden');
   loadApps();
 }
 
 function logout() {
   adminKey = '';
+  localStorage.removeItem(STORAGE_KEY);
   document.getElementById('login').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
 }
 
 async function api(method, path, body) {
-  const opts = { method, headers: { 'X-Admin-Key': adminKey } };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const opts = { method, headers: { 'X-Admin-Key': adminKey }, signal: controller.signal };
   if (body && typeof body === 'object' && !(body instanceof FormData)) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(baseUrl + path, opts);
-  if (res.status === 401) { logout(); return null; }
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.statusText); }
-  return res.status === 204 ? null : res.json();
+  try {
+    const res = await fetch(baseUrl + path, opts);
+    clearTimeout(timeoutId);
+    if (res.status === 401) {
+      const errBody = await res.json().catch(()=>({ error: 'Unauthorized - Admin Key incorrect' }));
+      throw new Error(errBody.error || 'Unauthorized');
+    }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.statusText); }
+    return res.status === 204 ? null : res.json();
+  } catch(e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') throw new Error('Request timed out. The server may be waking up (Render free tier) - try again.');
+    throw e;
+  }
 }
 
 async function loadApps() {
   try {
     const apps = await api('GET', '/v1/admin/apps');
-    if (!apps) return;
     document.getElementById('login').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    renderApps(apps);
+    renderApps(apps || []);
   } catch(e) {
     document.getElementById('loginError').textContent = e.message;
     document.getElementById('loginError').classList.remove('hidden');
@@ -215,7 +229,8 @@ async function showApp(key) {
       <div class="detail-grid">
         <div class="card">
           <h2>${d.appName}</h2>
-          <div style="font-family:monospace;font-size:12px;color:#a1a1aa">${d.appKey}</div>
+          <div style="font-size:12px;color:#a1a1aa">🔑 عادي: <span style="font-family:monospace">${d.appKey}</span></div>
+          <div style="font-size:12px;color:#f87171;margin-top:4px">🔒 إجباري: <span style="font-family:monospace">${d.mandatoryAppKey || '—'}</span></div>
           <div style="margin-top:8px"><span class="badge badge-green">v${d.currentVersion}</span></div>
           <div style="margin-top:8px;font-size:12px;color:#71717a">${new Date(d.createdAt).toLocaleDateString('ar-SA')}</div>
         </div>
@@ -292,8 +307,12 @@ async function registerApp() {
     if (!res) return;
     result.innerHTML = `<div style="color:#86efac;margin-bottom:8px">✅ تم التسجيل!</div>
       <div>الاسم: ${res.appName}</div>
-      <div>API Key: <span style="color:#fbbf24">${res.appKey}</span></div>
-      <div style="margin-top:8px;font-size:11px;color:#71717a;cursor:pointer" onclick="navigator.clipboard.writeText('${res.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح</div>`;
+      <div style="margin-top:8px">🔑 المفتاح العادي (اختياري):</div>
+      <div style="font-family:monospace;font-size:12px;color:#fbbf24;word-break:break-all">${res.appKey}</div>
+      <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${res.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح العادي</div>
+      <div style="margin-top:12px">🔒 المفتاح الإجباري (للضرورة):</div>
+      <div style="font-family:monospace;font-size:12px;color:#f87171;word-break:break-all">${res.mandatoryKey}</div>
+      <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${res.mandatoryKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح الإجباري</div>`;
     result.classList.remove('hidden');
     status.classList.add('hidden');
     document.getElementById('regName').value = '';
