@@ -106,26 +106,22 @@
 
 <div id="uploadModal" class="modal-overlay hidden">
   <div class="modal">
-    <h3>رفع تحديث جديد</h3>
+    <h3>إضافة تحديث جديد</h3>
     <div class="form-group">
       <label>API Key</label>
-      <input id="upKey" placeholder="مفتاح التطبيق">
+      <input id="upKey" placeholder="مفتاح التطبيق" dir="ltr">
     </div>
     <div class="form-group">
-      <label>من إصدار</label>
-      <input id="upFrom" placeholder="1.0.0">
+      <label>الإصدار الجديد</label>
+      <input id="upVersion" placeholder="1.1.0" dir="ltr">
     </div>
     <div class="form-group">
-      <label>إلى إصدار</label>
-      <input id="upTo" placeholder="1.1.0">
+      <label>رابط التحميل (GitHub / Google Drive / ...)</label>
+      <input id="upUrl" placeholder="https://github.com/.../update.zip" dir="ltr">
     </div>
     <div class="form-group">
       <label>ملاحظات الإصدار</label>
       <textarea id="upNotes" placeholder="ما الجديد في هذا الإصدار..."></textarea>
-    </div>
-    <div class="form-group">
-      <label>ملف التحديث (ZIP)</label>
-      <input type="file" id="upFile" accept=".zip">
     </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#a1a1aa;margin-top:8px">
       <input type="checkbox" id="upMandatory"> تحديث إجباري
@@ -228,8 +224,8 @@ async function showApp(key) {
       <div class="detail-grid">
         <div class="card">
           <h2>${d.appName}</h2>
-          <div style="font-size:12px;color:#a1a1aa">🔑 عادي: <span style="font-family:monospace">${d.appKey}</span></div>
-          <div style="font-size:12px;color:#f87171;margin-top:4px">🔒 إجباري: <span style="font-family:monospace">${d.mandatoryAppKey || '—'}</span></div>
+          <div style="font-size:12px;color:#a1a1aa">🔑 API Key: <span style="font-family:monospace">${d.appKey}</span></div>
+          <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${d.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح</div>
           <div style="margin-top:8px"><span class="badge badge-green">v${d.currentVersion}</span></div>
           <div style="margin-top:8px;font-size:12px;color:#71717a">${new Date(d.createdAt).toLocaleDateString('ar-SA')}</div>
         </div>
@@ -242,14 +238,14 @@ async function showApp(key) {
       <div class="card">
         <h2>التحديثات (${d.packages.length})</h2>
         <table>
-          <thead><tr><th>#</th><th>من</th><th>إلى</th><th>الحجم</th><th>إجباري</th><th>التاريخ</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>الإصدار</th><th>رابط التحميل</th><th>الحجم</th><th>إجباري</th><th>التاريخ</th><th></th></tr></thead>
           <tbody>
             ${d.packages.length === 0 ? '<tr><td colspan="7" class="empty">لا توجد تحديثات</td></tr>' :
             d.packages.map(p => `<tr>
               <td>${p.id}</td>
-              <td><span class="badge badge-gray">v${p.fromVersion}</span></td>
-              <td><span class="badge badge-green">v${p.toVersion}</span></td>
-              <td>${(p.fileSize / 1024).toFixed(1)} KB</td>
+              <td><span class="badge badge-green">v${p.version}</span></td>
+              <td><a href="${p.downloadUrl}" target="_blank" style="color:#60a5fa;font-size:12px">تحميل</a></td>
+              <td>${p.fileSize ? (p.fileSize / 1024).toFixed(1) + ' KB' : '—'}</td>
               <td>${p.isMandatory ? '<span class="badge badge-yellow">إجباري</span>' : '<span class="badge badge-gray">اختياري</span>'}</td>
               <td style="font-size:12px;color:#a1a1aa">${new Date(p.createdAt).toLocaleDateString('ar-SA')}</td>
               <td><button class="btn btn-danger btn-sm" onclick="deletePackage(${p.id})">حذف</button></td>
@@ -257,7 +253,7 @@ async function showApp(key) {
           </tbody>
         </table>
       </div>
-      ${d.packages.length > 0 ? `<div class="card"><h2>آخر تحديث</h2><pre style="font-size:13px;color:#a1a1aa;white-space:pre-wrap;margin-top:8px">${d.packages[0].releaseNotes || 'لا توجد ملاحظات'}</pre></div>` : ''}
+      ${d.packages.length > 0 ? `<div class="card"><h2>ملاحظات الإصدار الأخير</h2><pre style="font-size:13px;color:#a1a1aa;white-space:pre-wrap;margin-top:8px">${d.packages[0].releaseNotes || 'لا توجد ملاحظات'}</pre></div>` : ''}
     `;
     document.getElementById('detailContent').innerHTML = html;
   } catch(e) { alert(e.message); }
@@ -306,12 +302,9 @@ async function registerApp() {
     if (!res) return;
     result.innerHTML = `<div style="color:#86efac;margin-bottom:8px">✅ تم التسجيل!</div>
       <div>الاسم: ${res.appName}</div>
-      <div style="margin-top:8px">🔑 المفتاح العادي (اختياري):</div>
-      <div style="font-family:monospace;font-size:12px;color:#fbbf24;word-break:break-all">${res.appKey}</div>
-      <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${res.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح العادي</div>
-      <div style="margin-top:12px">🔒 المفتاح الإجباري (للضرورة):</div>
-      <div style="font-family:monospace;font-size:12px;color:#f87171;word-break:break-all">${res.mandatoryKey}</div>
-      <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${res.mandatoryKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح الإجباري</div>`;
+      <div style="margin-top:12px">🔑 API Key:</div>
+      <div style="font-family:monospace;font-size:14px;color:#fbbf24;word-break:break-all">${res.appKey}</div>
+      <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${res.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح</div>`;
     result.classList.remove('hidden');
     status.classList.add('hidden');
     document.getElementById('regName').value = '';
@@ -324,30 +317,25 @@ function hideUploadModal() { document.getElementById('uploadModal').classList.ad
 
 async function uploadUpdate() {
   const key = document.getElementById('upKey').value.trim();
-  const from = document.getElementById('upFrom').value.trim();
-  const to = document.getElementById('upTo').value.trim();
+  const version = document.getElementById('upVersion').value.trim();
+  const url = document.getElementById('upUrl').value.trim();
   const notes = document.getElementById('upNotes').value.trim();
-  const file = document.getElementById('upFile').files[0];
   const mandatory = document.getElementById('upMandatory').checked;
   const status = document.getElementById('uploadStatus');
 
-  if (!key || !from || !to || !file) { status.textContent = 'الرجاء ملء جميع الحقول المطلوبة'; status.classList.remove('hidden'); return; }
+  if (!key || !version || !url) { status.textContent = 'الرجاء ملء جميع الحقول المطلوبة (API Key, الإصدار, رابط التحميل)'; status.classList.remove('hidden'); return; }
 
   try {
-    const bytes = await file.arrayBuffer();
-    const url = `${baseUrl}/v1/upload?key=${encodeURIComponent(key)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${notes ? '&notes=' + encodeURIComponent(notes) : ''}${mandatory ? '&mandatory=true' : ''}`;
-
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Admin-Key': adminKey }, body: bytes });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.statusText); }
-    const result = await res.json();
-    status.textContent = `✅ تم الرفع! v${from} → v${to} (${(result.fileSize / 1024).toFixed(1)} KB)`;
+    const query = `key=${encodeURIComponent(key)}&version=${encodeURIComponent(version)}&url=${encodeURIComponent(url)}${notes ? '&notes=' + encodeURIComponent(notes) : ''}${mandatory ? '&mandatory=true' : ''}`;
+    const res = await api('POST', `/v1/upload?${query}`);
+    if (!res) return;
+    status.textContent = `✅ تم الإضافة! v${version} — ${res.isMandatory ? 'إجباري' : 'اختياري'}`;
     status.style.color = '#86efac';
     status.classList.remove('hidden');
     document.getElementById('upKey').value = '';
-    document.getElementById('upFrom').value = '';
-    document.getElementById('upTo').value = '';
+    document.getElementById('upVersion').value = '';
+    document.getElementById('upUrl').value = '';
     document.getElementById('upNotes').value = '';
-    document.getElementById('upFile').value = '';
     document.getElementById('upMandatory').checked = false;
     loadApps();
   } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }

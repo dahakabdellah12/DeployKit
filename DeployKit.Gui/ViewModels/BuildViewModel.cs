@@ -220,13 +220,14 @@ public class BuildViewModel : BaseViewModel
             }
 
             IsUploading = true;
-            StatusMessage = "☁️ جاري الرفع إلى السحابة...";
+            StatusMessage = "☁️ جاري التسجيل في السحابة...";
 
             var cloud = new CloudService(data.CloudUrl);
-            var result = await cloud.UploadAsync(data.ApiKey, SourceVersion, TargetVersion, OutputPath,
+            var downloadUrl = $"https://github.com/{Uri.EscapeDataString(AppName)}/releases/download/v{TargetVersion}/update.zip";
+            var result = await cloud.UploadAsync(data.ApiKey, TargetVersion, downloadUrl,
                 $"تحديث {AppName} من {SourceVersion} إلى {TargetVersion}");
 
-            StatusMessage = $"☁️✅ تم الرفع! الإصدار {result.ToVersion} متوفر الآن (ID: {result.Id})";
+            StatusMessage = $"☁️✅ تم التسجيل! الإصدار {result.Version} — الرابط: {result.DownloadUrl}";
         }
         catch (Exception ex)
         {

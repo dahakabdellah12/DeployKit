@@ -9,9 +9,6 @@ public class AppRegistration
     [Required, MaxLength(64)]
     public string AppKey { get; set; } = "";
 
-    [MaxLength(64)]
-    public string MandatoryAppKey { get; set; } = "";
-
     [Required, MaxLength(128)]
     public string AppName { get; set; } = "";
 

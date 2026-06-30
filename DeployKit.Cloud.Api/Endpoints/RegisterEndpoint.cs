@@ -16,16 +16,14 @@ public static class RegisterEndpoint
                     return Results.BadRequest(new { error = "App name is required" });
 
                 var appKey = Guid.NewGuid().ToString("N")[..12];
-                var mandatoryKey = "m_" + Guid.NewGuid().ToString("N")[..12];
                 db.Apps.Add(new AppRegistration
                 {
                     AppKey = appKey,
-                    MandatoryAppKey = mandatoryKey,
                     AppName = name
                 });
 
                 await db.SaveChangesAsync();
-                return Results.Ok(new { appKey, mandatoryKey, appName = name });
+                return Results.Ok(new { appKey, appName = name });
             }
             catch (Exception ex)
             {

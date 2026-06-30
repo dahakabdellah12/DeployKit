@@ -8,7 +8,7 @@ public static class CheckEndpoint
 {
     public static void Map(WebApplication app)
     {
-        app.MapGet("/v1/check", async (string key, string v, AppDbContext db, HttpContext ctx) =>
+        app.MapGet("/v1/check", async (string key, string v, AppDbContext db) =>
         {
             try
             {
@@ -17,32 +17,20 @@ public static class CheckEndpoint
 
                 var appReg = await db.Apps
                     .Include(a => a.Packages)
-                    .FirstOrDefaultAsync(a => a.AppKey == key || a.MandatoryAppKey == key);
+                    .FirstOrDefaultAsync(a => a.AppKey == key);
 
                 if (appReg == null)
                     return Results.NotFound(new { error = "App not found. Register first at POST /v1/register?name=YourApp" });
 
-                var mandatoryOnly = key == appReg.MandatoryAppKey && !string.IsNullOrEmpty(appReg.MandatoryAppKey);
-
                 var current = TryParseVersion(v);
-                var scheme = ctx.Request.Scheme;
-                var host = ctx.Request.Host.Value;
+                if (current == null)
+                    return Results.BadRequest(new { error = "Invalid version format. Expected x.y.z" });
 
-                var applicable = appReg.Packages
-                    .Where(p =>
-                    {
-                        if (mandatoryOnly && !p.IsMandatory) return false;
-                        var from = TryParseVersion(p.FromVersion);
-                        var to = TryParseVersion(p.ToVersion);
-                        if (from == null || to == null) return false;
-                        return current != null && current >= from && current < to;
-                    })
-                    .OrderByDescending(p => TryParseVersion(p.ToVersion)?.Major)
-                    .ThenByDescending(p => TryParseVersion(p.ToVersion)?.Minor)
-                    .ThenByDescending(p => TryParseVersion(p.ToVersion)?.Build)
-                    .ToList();
+                var latest = appReg.Packages
+                    .Where(p => TryParseVersion(p.Version) != null && TryParseVersion(p.Version) > current)
+                    .OrderByDescending(p => TryParseVersion(p.Version))
+                    .FirstOrDefault();
 
-                var latest = applicable.FirstOrDefault();
                 if (latest == null)
                 {
                     return Results.Ok(new UpdateResponse
@@ -52,15 +40,12 @@ public static class CheckEndpoint
                     });
                 }
 
-                var downloadUrl = $"{scheme}://{host}/v1/dl/{latest.Id}";
-
                 return Results.Ok(new UpdateResponse
                 {
                     HasUpdate = true,
-                    LatestVersion = latest.ToVersion,
-                    DownloadUrl = downloadUrl,
+                    LatestVersion = latest.Version,
+                    DownloadUrl = latest.DownloadUrl,
                     PackageSize = latest.FileSize,
-                    PackageHash = latest.FileHash,
                     ReleaseNotes = latest.ReleaseNotes,
                     IsMandatory = latest.IsMandatory
                 });

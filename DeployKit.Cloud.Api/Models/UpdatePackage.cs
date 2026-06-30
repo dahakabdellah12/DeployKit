@@ -9,18 +9,12 @@ public class UpdatePackage
     public int AppId { get; set; }
 
     [Required, MaxLength(16)]
-    public string FromVersion { get; set; } = "";
+    public string Version { get; set; } = "";
 
-    [Required, MaxLength(16)]
-    public string ToVersion { get; set; } = "";
-
-    [MaxLength(256)]
-    public string StoredFileName { get; set; } = "";
+    [MaxLength(2048)]
+    public string DownloadUrl { get; set; } = "";
 
     public long FileSize { get; set; }
-
-    [MaxLength(64)]
-    public string FileHash { get; set; } = "";
 
     [MaxLength(2000)]
     public string ReleaseNotes { get; set; } = "";

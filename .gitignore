@@ -22,5 +22,3 @@ artifacts/
 [Dd]ebug/
 [Rr]elease/
 packages/
-DeployKit.Cloud.Api/Storage/
-DeployKit.Cloud.Api/packages/

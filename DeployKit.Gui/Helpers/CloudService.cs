@@ -26,23 +26,20 @@ public class CloudService
         return await response.Content.ReadFromJsonAsync<RegisterResult>() ?? new RegisterResult();
     }
 
-    public async Task<UploadResult> UploadAsync(string apiKey, string fromVersion, string toVersion,
-        string filePath, string? releaseNotes = null, bool? mandatory = null)
+    public async Task<UploadResult> UploadAsync(string apiKey, string version, string downloadUrl,
+        string? releaseNotes = null, bool? mandatory = null)
     {
         var baseUrl = CloudUrl ?? "http://localhost:5000";
-        var url = $"{baseUrl.TrimEnd('/')}/v1/upload?key={apiKey}&from={fromVersion}&to={toVersion}";
+        var url = $"{baseUrl.TrimEnd('/')}/v1/upload?key={apiKey}&version={Uri.EscapeDataString(version)}&url={Uri.EscapeDataString(downloadUrl)}";
 
         if (!string.IsNullOrEmpty(releaseNotes))
             url += $"&notes={Uri.EscapeDataString(releaseNotes)}";
         if (mandatory.HasValue)
             url += $"&mandatory={mandatory.Value}";
 
-        using var fileStream = File.OpenRead(filePath);
-        using var content = new StreamContent(fileStream);
-        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-        var response = await _http.PostAsync(url, content);
+        var response = await _http.PostAsync(url, null);
         response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<UploadResult>() ?? new UploadResult();
+        return await response.Content.ReadFromJsonAsync<UploadResult>() ?? new UploadResult();
     }
 }
 
@@ -60,9 +57,9 @@ public class UploadResult
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
-    [JsonPropertyName("toVersion")]
-    public string ToVersion { get; set; } = "";
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = "";
 
-    [JsonPropertyName("fileSize")]
-    public long FileSize { get; set; }
+    [JsonPropertyName("downloadUrl")]
+    public string DownloadUrl { get; set; } = "";
 }

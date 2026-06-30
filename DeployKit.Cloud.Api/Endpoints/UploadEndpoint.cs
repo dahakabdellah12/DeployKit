@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Models;
@@ -7,61 +6,45 @@ namespace DeployKit.Cloud.Api.Endpoints;
 
 public static class UploadEndpoint
 {
-    public static void Map(WebApplication app, string storagePath)
+    public static void Map(WebApplication app)
     {
-        app.MapPost("/v1/upload", async (HttpContext context,
-            string key, string from, string to,
+        app.MapPost("/v1/upload", async (string key, string version, string url,
             string? notes, bool? mandatory, AppDbContext db) =>
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(key))
+                    return Results.BadRequest(new { error = "App key is required" });
+
+                if (string.IsNullOrWhiteSpace(version))
+                    return Results.BadRequest(new { error = "Version is required" });
+
+                if (string.IsNullOrWhiteSpace(url))
+                    return Results.BadRequest(new { error = "Download URL is required" });
+
                 var appReg = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key);
                 if (appReg == null)
                     return Results.NotFound(new { error = "Invalid app key" });
 
-                if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to))
-                    return Results.BadRequest(new { error = "from and to parameters are required" });
-
-                if (context.Request.ContentLength == 0 || context.Request.Body == null)
-                    return Results.BadRequest(new { error = "Request body is empty" });
-
-                var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-                var fileName = $"{appReg.Id}_{stamp}_update.zip";
-                var filePath = Path.Combine(storagePath, fileName);
-
-                Directory.CreateDirectory(storagePath);
-
-                string fileHash;
-                await using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await context.Request.Body.CopyToAsync(stream);
-                    stream.Position = 0;
-                    fileHash = Convert.ToHexString(SHA256.HashData(stream)).ToLower();
-                }
-
-                var fileSize = new FileInfo(filePath).Length;
-
                 var pkg = new UpdatePackage
                 {
                     AppId = appReg.Id,
-                    FromVersion = from,
-                    ToVersion = to,
-                    StoredFileName = fileName,
-                    FileSize = fileSize,
-                    FileHash = fileHash,
+                    Version = version,
+                    DownloadUrl = url,
                     ReleaseNotes = notes ?? "",
                     IsMandatory = mandatory ?? false
                 };
 
                 db.Packages.Add(pkg);
-                appReg.CurrentVersion = to;
+                appReg.CurrentVersion = version;
                 await db.SaveChangesAsync();
 
                 return Results.Ok(new
                 {
                     pkg.Id,
-                    pkg.ToVersion,
-                    pkg.FileSize
+                    pkg.Version,
+                    pkg.DownloadUrl,
+                    pkg.IsMandatory
                 });
             }
             catch (Exception ex)

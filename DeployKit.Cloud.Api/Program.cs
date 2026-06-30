@@ -5,7 +5,6 @@ using DeployKit.Cloud.Api.Endpoints;
 var builder = WebApplication.CreateBuilder(args);
 
 var dataDir = builder.Configuration["DataPath"] ?? "/data";
-var storagePath = Path.Combine(dataDir, "packages");
 var connStr = builder.Configuration.GetConnectionString("Sqlite");
 var connString = !string.IsNullOrWhiteSpace(connStr)
     ? connStr
@@ -25,17 +24,16 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-    Directory.CreateDirectory(storagePath);
+    Directory.CreateDirectory(dataDir);
 }
 
 app.UseCors();
 app.UseStaticFiles();
 
 RegisterEndpoint.Map(app);
-UploadEndpoint.Map(app, storagePath);
+UploadEndpoint.Map(app);
 CheckEndpoint.Map(app);
-DownloadEndpoint.Map(app, storagePath);
-AdminEndpoint.Map(app, storagePath);
+AdminEndpoint.Map(app);
 
 app.MapFallbackToFile("index.html");
 

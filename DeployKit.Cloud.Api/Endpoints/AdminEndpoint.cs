@@ -8,7 +8,7 @@ public record RegisterRequest(string AppName);
 
 public static class AdminEndpoint
 {
-    public static void Map(WebApplication app, string storagePath)
+    public static void Map(WebApplication app)
     {
         var adminKey = app.Configuration["AdminKey"] ?? "admin";
 
@@ -21,7 +21,7 @@ public static class AdminEndpoint
             return await next(ctx);
         });
 
-        admin.MapGet("/apps", async (AppDbContext db, HttpRequest req) =>
+        admin.MapGet("/apps", async (AppDbContext db) =>
         {
             var apps = await db.Apps
                 .Include(a => a.Packages)
@@ -30,12 +30,10 @@ public static class AdminEndpoint
                 {
                     a.Id,
                     a.AppKey,
-                    a.MandatoryAppKey,
                     a.AppName,
                     a.CurrentVersion,
                     a.CreatedAt,
-                    PackageCount = a.Packages.Count,
-                    TotalDownloads = 0
+                    PackageCount = a.Packages.Count
                 })
                 .ToListAsync();
 
@@ -55,15 +53,14 @@ public static class AdminEndpoint
             {
                 app.Id,
                 app.AppKey,
-                app.MandatoryAppKey,
                 app.AppName,
                 app.CurrentVersion,
                 app.CreatedAt,
                 Packages = app.Packages.Select(p => new
                 {
                     p.Id,
-                    p.FromVersion,
-                    p.ToVersion,
+                    p.Version,
+                    p.DownloadUrl,
                     p.FileSize,
                     p.ReleaseNotes,
                     p.IsMandatory,
@@ -80,16 +77,14 @@ public static class AdminEndpoint
                     return Results.BadRequest(new { error = "App name is required" });
 
                 var appKey = Guid.NewGuid().ToString("N")[..12];
-                var mandatoryKey = "m_" + Guid.NewGuid().ToString("N")[..12];
                 db.Apps.Add(new AppRegistration
                 {
                     AppKey = appKey,
-                    MandatoryAppKey = mandatoryKey,
                     AppName = req.AppName
                 });
 
                 await db.SaveChangesAsync();
-                return Results.Ok(new { appKey, mandatoryKey, appName = req.AppName });
+                return Results.Ok(new { appKey, appName = req.AppName });
             }
             catch (Exception ex)
             {
@@ -106,13 +101,6 @@ public static class AdminEndpoint
             if (app is null)
                 return Results.NotFound(new { error = "App not found" });
 
-            foreach (var pkg in app.Packages)
-            {
-                var filePath = Path.Combine(storagePath, pkg.StoredFileName);
-                if (File.Exists(filePath))
-                    File.Delete(filePath);
-            }
-
             db.Packages.RemoveRange(app.Packages);
             db.Apps.Remove(app);
             await db.SaveChangesAsync();
@@ -125,10 +113,6 @@ public static class AdminEndpoint
             var pkg = await db.Packages.FindAsync(id);
             if (pkg is null)
                 return Results.NotFound(new { error = "Package not found" });
-
-            var filePath = Path.Combine(storagePath, pkg.StoredFileName);
-            if (File.Exists(filePath))
-                File.Delete(filePath);
 
             db.Packages.Remove(pkg);
             await db.SaveChangesAsync();
@@ -148,8 +132,8 @@ public static class AdminEndpoint
             return Results.Ok(new
             {
                 pkg.Id,
-                pkg.FromVersion,
-                pkg.ToVersion,
+                pkg.Version,
+                pkg.DownloadUrl,
                 pkg.FileSize,
                 pkg.ReleaseNotes,
                 pkg.IsMandatory,
