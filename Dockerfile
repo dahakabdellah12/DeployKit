@@ -9,6 +9,7 @@ COPY --from=build /app/out .
 EXPOSE 80
 ENV ASPNETCORE_URLS=http://0.0.0.0:80
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DataPath=/data
 ENV ConnectionStrings__Sqlite="Data Source=/data/deploykit.db"
 VOLUME /data
 ENTRYPOINT ["dotnet", "DeployKit.Cloud.Api.dll"]

@@ -141,20 +141,17 @@
 <script>
 let adminKey = '';
 let baseUrl = window.location.origin;
-const STORAGE_KEY = 'dk_admin_key';
 
 function login() {
   const key = document.getElementById('adminKey').value.trim();
   if (!key) return;
   adminKey = key;
-  localStorage.setItem(STORAGE_KEY, key);
   document.getElementById('loginError').classList.add('hidden');
   loadApps();
 }
 
 function logout() {
   adminKey = '';
-  localStorage.removeItem(STORAGE_KEY);
   document.getElementById('login').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
 }
@@ -354,10 +351,6 @@ async function uploadUpdate() {
   } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }
 }
 
-if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-  const saved = localStorage.getItem('dk_admin_key');
-  if (saved) { adminKey = saved; loadApps(); }
-}
 </script>
 </body>
 </html>

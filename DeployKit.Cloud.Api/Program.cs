@@ -4,11 +4,12 @@ using DeployKit.Cloud.Api.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var storagePath = Path.Combine(AppContext.BaseDirectory, "packages");
+var dataDir = builder.Configuration["DataPath"] ?? "/data";
+var storagePath = Path.Combine(dataDir, "packages");
 var connStr = builder.Configuration.GetConnectionString("Sqlite");
 var connString = !string.IsNullOrWhiteSpace(connStr)
     ? connStr
-    : $"Data Source={Path.Combine(AppContext.BaseDirectory, "deploykit.db")}";
+    : $"Data Source={Path.Combine(dataDir, "deploykit.db")}";
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite(connString));
