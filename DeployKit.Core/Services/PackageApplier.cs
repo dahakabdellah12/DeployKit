@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
 using System.IO.Compression;
+using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using DeployKit.Core.Models;
 
 namespace DeployKit.Core.Services;
@@ -91,9 +96,7 @@ public class PackageApplier
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
 
-                using var entryStream = entry.Open();
-                using var fileStream = File.Create(fullPath);
-                await entryStream.CopyToAsync(fileStream);
+                await RetryableWriteAsync(fullPath, entry.Open);
             }
 
             var tempDir = Path.Combine(Path.GetTempPath(), "DeployKit", Guid.NewGuid().ToString("N"));
@@ -116,9 +119,7 @@ public class PackageApplier
                         var oldFile = fullPath;
                         var patchFile = Path.Combine(tempDir, Path.GetFileName(modified.PatchFile));
 
-                        using (var patchStream = patchEntry.Open())
-                        using (var fs = File.Create(patchFile))
-                            await patchStream.CopyToAsync(fs);
+                        await RetryableWriteAsync(patchFile, patchEntry.Open);
 
                         await _patchService.ApplyPatchAsync(oldFile, patchFile, fullPath);
                     }
@@ -127,9 +128,7 @@ public class PackageApplier
                         var entry = archive.GetEntry(modified.Path)
                             ?? throw new InvalidOperationException($"File not found in package: {modified.Path}");
 
-                        using var entryStream = entry.Open();
-                        using var fileStream = File.Create(fullPath);
-                        await entryStream.CopyToAsync(fileStream);
+                        await RetryableWriteAsync(fullPath, entry.Open);
                     }
                 }
             }
@@ -149,5 +148,89 @@ public class PackageApplier
         }
 
         Cleanup();
+    }
+
+    public async Task ApplyFullPackageAsync(string packagePath, string targetDir)
+    {
+        var actualPath = ResolvePath(packagePath);
+        var manifest = await LoadManifestAsync(packagePath);
+
+        if (!manifest.IsFullPackage)
+            throw new InvalidOperationException("Package is not a full package. Use ApplyAsync for delta packages.");
+
+        BackupPath = _rollback.CreateBackup(targetDir);
+
+        try
+        {
+            using var archive = ZipFile.OpenRead(actualPath);
+
+            var manifestPaths = new HashSet<string>(manifest.AllFiles.Select(f => f.Path));
+
+            foreach (var file in manifest.AllFiles)
+            {
+                var fullPath = Path.Combine(targetDir, file.Path);
+                var dir = Path.GetDirectoryName(fullPath)!;
+
+                if (File.Exists(fullPath))
+                {
+                    var existingHash = await _hashService.ComputeHashAsync(fullPath);
+                    if (string.Equals(existingHash, file.Hash, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+
+                var entry = archive.GetEntry(file.Path);
+                if (entry == null) continue;
+
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                await RetryableWriteAsync(fullPath, entry.Open);
+            }
+
+            foreach (var existingFile in Directory.GetFiles(targetDir, "*", SearchOption.AllDirectories))
+            {
+                var relPath = Path.GetRelativePath(targetDir, existingFile);
+                if (!manifestPaths.Contains(relPath))
+                    File.Delete(existingFile);
+            }
+
+            foreach (var dir in Directory.GetDirectories(targetDir, "*", SearchOption.AllDirectories)
+                         .OrderByDescending(d => d.Length))
+            {
+                if (!Directory.EnumerateFileSystemEntries(dir).Any())
+                    Directory.Delete(dir);
+            }
+        }
+        catch
+        {
+            if (BackupPath != null)
+            {
+                _rollback.Restore(BackupPath, targetDir);
+                _rollback.Cleanup(BackupPath);
+            }
+            BackupPath = null;
+            Cleanup();
+            throw;
+        }
+
+        Cleanup();
+    }
+
+    private static async Task RetryableWriteAsync(string path, Func<Stream> openEntry, int maxRetries = 10)
+    {
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            try
+            {
+                using var entryStream = openEntry();
+                using var fileStream = File.Create(path);
+                await entryStream.CopyToAsync(fileStream);
+                return;
+            }
+            catch (IOException) when (attempt < maxRetries - 1)
+            {
+                await Task.Delay(300 * (attempt + 1));
+            }
+        }
     }
 }

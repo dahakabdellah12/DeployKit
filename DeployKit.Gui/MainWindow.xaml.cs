@@ -56,12 +56,7 @@ public partial class MainWindow : Window
         {
             var dialog = new Microsoft.Win32.OpenFolderDialog();
             if (dialog.ShowDialog() == true)
-            {
-                if (string.IsNullOrEmpty(vm.BuildVM.OldDir))
-                    vm.BuildVM.OldDir = dialog.FolderName;
-                else
-                    vm.BuildVM.NewDir = dialog.FolderName;
-            }
+                vm.BuildVM.NewDir = dialog.FolderName;
         }
     }
 

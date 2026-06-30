@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using DeployKit.Gui.Helpers;
@@ -21,7 +22,7 @@ public class SettingsViewModel : BaseViewModel
     public string ApiKey
     {
         get => _apiKey;
-        set => SetProperty(ref _apiKey, value);
+        set { SetProperty(ref _apiKey, value); HasApiKey = !string.IsNullOrEmpty(value); }
     }
 
     private string _cloudUrl = "https://deploykit-gb81.onrender.com";
@@ -66,13 +67,13 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _hasApiKey, value);
     }
 
-    public RelayCommandAsync RegisterCommand { get; }
+    public RelayCommand OpenDashboardCommand { get; }
     public RelayCommand CopyKeyCommand { get; }
     public RelayCommand SaveSettingsCommand { get; }
 
     public SettingsViewModel()
     {
-        RegisterCommand = new RelayCommandAsync(async _ => await RegisterAsync());
+        OpenDashboardCommand = new RelayCommand(_ => OpenDashboard());
         CopyKeyCommand = new RelayCommand(_ => CopyKey());
         SaveSettingsCommand = new RelayCommand(_ => SaveSettings());
         LoadSettings();
@@ -124,28 +125,18 @@ public class SettingsViewModel : BaseViewModel
         catch { }
     }
 
-    private async Task RegisterAsync()
+    private void OpenDashboard()
     {
-        if (string.IsNullOrWhiteSpace(AppName))
-        {
-            StatusMessage = "الرجاء إدخال اسم التطبيق";
-            return;
-        }
-
-        StatusMessage = "جاري التسجيل...";
+        var url = CloudUrl?.TrimEnd('/') ?? "http://localhost:5000";
         try
         {
-            var cloud = new CloudService(CloudUrl);
-            var result = await cloud.RegisterAsync(AppName);
-            ApiKey = result.AppKey;
-            HasApiKey = true;
-            StatusMessage = $"✅ تم التسجيل! المفتاح: {result.AppKey}";
-            SaveSettings();
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
         }
-        catch (Exception ex)
-        {
-            StatusMessage = $"❌ فشل التسجيل: {ex.Message}";
-        }
+        catch { }
     }
 
     private void CopyKey()

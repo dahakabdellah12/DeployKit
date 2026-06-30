@@ -1,8 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
-using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
+
+public class CheckResponse
+{
+    public bool HasUpdate { get; set; }
+    public string LatestVersion { get; set; } = "";
+    public string DownloadUrl { get; set; } = "";
+    public long PackageSize { get; set; }
+    public string ReleaseNotes { get; set; } = "";
+    public bool IsMandatory { get; set; }
+    public bool IsFullPackage { get; set; } = true;
+}
 
 public static class CheckEndpoint
 {
@@ -27,27 +37,32 @@ public static class CheckEndpoint
                     return Results.BadRequest(new { error = "Invalid version format. Expected x.y.z" });
 
                 var latest = appReg.Packages
-                    .Where(p => TryParseVersion(p.Version) != null && TryParseVersion(p.Version) > current)
+                    .Where(p =>
+                    {
+                        var pkgVer = TryParseVersion(p.Version);
+                        return pkgVer != null && pkgVer > current;
+                    })
                     .OrderByDescending(p => TryParseVersion(p.Version))
                     .FirstOrDefault();
 
                 if (latest == null)
                 {
-                    return Results.Ok(new UpdateResponse
+                    return Results.Ok(new CheckResponse
                     {
                         HasUpdate = false,
                         LatestVersion = appReg.CurrentVersion
                     });
                 }
 
-                return Results.Ok(new UpdateResponse
+                return Results.Ok(new CheckResponse
                 {
                     HasUpdate = true,
                     LatestVersion = latest.Version,
                     DownloadUrl = latest.DownloadUrl,
                     PackageSize = latest.FileSize,
                     ReleaseNotes = latest.ReleaseNotes,
-                    IsMandatory = latest.IsMandatory
+                    IsMandatory = latest.IsMandatory,
+                    IsFullPackage = true
                 });
             }
             catch (Exception ex)

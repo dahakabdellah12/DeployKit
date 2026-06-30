@@ -1,0 +1,62 @@
+<Window x:Class="DeployKit.Updater.UpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="تحديث التطبيق" Height="320" Width="500"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI, sans-serif" FontSize="14"
+        Background="#F5F6FA"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing">
+    <Grid Margin="32,28,32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- أيقونة + عنوان -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+            <Border Width="56" Height="56" CornerRadius="14"
+                    Background="#EEF2FF" HorizontalAlignment="Center">
+                <TextBlock Text="📦" FontSize="30"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock x:Name="TitleText" Text="جاري تحديث التطبيق..."
+                       FontSize="20" FontWeight="600"
+                       HorizontalAlignment="Center" Foreground="#1A1B2E"
+                       Margin="0,12,0,4"/>
+            <TextBlock x:Name="SubtitleText" Text=""
+                       FontSize="13" Foreground="#6B7280"
+                       HorizontalAlignment="Center" Margin="0,0,0,4"/>
+        </StackPanel>
+
+        <!-- شريط التقدم -->
+        <StackPanel Grid.Row="2" VerticalAlignment="Center" Margin="0,8,0,0">
+            <ProgressBar x:Name="ProgressBar" Height="10"
+                         Background="#E5E7EB" BorderThickness="0"
+                         Foreground="#4F46E5" Maximum="100" Minimum="0"/>
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Text="جارٍ التحميل..."
+                           FontSize="13" Foreground="#6B7280"/>
+                <TextBlock Grid.Column="1" x:Name="PercentText" Text="0%"
+                           FontSize="13" Foreground="#4F46E5" FontWeight="600"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- زر الإلغاء -->
+        <Button Grid.Row="3" x:Name="CancelBtn"
+                Content="إلغاء" Width="110" Height="34"
+                Background="#EF4444" Foreground="White"
+                FontSize="13" Padding="8,6" Cursor="Hand"
+                BorderThickness="0"
+                Click="CancelBtn_Click"
+                HorizontalAlignment="Center" Margin="0,16,0,0"/>
+    </Grid>
+</Window>

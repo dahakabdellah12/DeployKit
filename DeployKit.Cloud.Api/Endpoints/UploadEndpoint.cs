@@ -32,7 +32,8 @@ public static class UploadEndpoint
                     Version = version,
                     DownloadUrl = url,
                     ReleaseNotes = notes ?? "",
-                    IsMandatory = mandatory ?? false
+                    IsMandatory = mandatory ?? false,
+                    IsFullPackage = true
                 };
 
                 db.Packages.Add(pkg);
@@ -44,7 +45,8 @@ public static class UploadEndpoint
                     pkg.Id,
                     pkg.Version,
                     pkg.DownloadUrl,
-                    pkg.IsMandatory
+                    pkg.IsMandatory,
+                    pkg.IsFullPackage
                 });
             }
             catch (Exception ex)

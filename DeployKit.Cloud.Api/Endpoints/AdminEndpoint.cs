@@ -5,19 +5,26 @@ using DeployKit.Cloud.Api.Models;
 namespace DeployKit.Cloud.Api.Endpoints;
 
 public record RegisterRequest(string AppName);
+public record UpdatePackageRequest(string? Version, string? DownloadUrl, string? ReleaseNotes, bool? IsMandatory);
 
 public static class AdminEndpoint
 {
     public static void Map(WebApplication app)
     {
-        var adminKey = app.Configuration["AdminKey"] ?? "admin";
-
         var admin = app.MapGroup("/v1/admin");
         admin.AddEndpointFilter(async (ctx, next) =>
         {
-            var key = ctx.HttpContext.Request.Headers["X-Admin-Key"].FirstOrDefault();
-            if (key != adminKey)
+            var auth = ctx.HttpContext.Request.Headers.Authorization.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(auth) || !auth.StartsWith("Bearer "))
                 return Results.Json(new { error = "Unauthorized" }, statusCode: 401);
+
+            var token = auth["Bearer ".Length..];
+            var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var user = await db.AdminUsers.FirstOrDefaultAsync(u => u.Token == token && u.TokenExpires > DateTime.UtcNow);
+
+            if (user == null)
+                return Results.Json(new { error = "Invalid or expired token" }, statusCode: 401);
+
             return await next(ctx);
         });
 
@@ -64,6 +71,7 @@ public static class AdminEndpoint
                     p.FileSize,
                     p.ReleaseNotes,
                     p.IsMandatory,
+                    p.IsFullPackage,
                     p.CreatedAt
                 })
             });
@@ -76,7 +84,7 @@ public static class AdminEndpoint
                 if (string.IsNullOrWhiteSpace(req.AppName))
                     return Results.BadRequest(new { error = "App name is required" });
 
-                var appKey = Guid.NewGuid().ToString("N")[..12];
+                var appKey = Guid.NewGuid().ToString("N");
                 db.Apps.Add(new AppRegistration
                 {
                     AppKey = appKey,
@@ -90,6 +98,19 @@ public static class AdminEndpoint
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
+        });
+
+        admin.MapPost("/apps/{key}/regenerate-key", async (string key, AppDbContext db) =>
+        {
+            var app = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key);
+            if (app is null)
+                return Results.NotFound(new { error = "App not found" });
+
+            var newKey = Guid.NewGuid().ToString("N");
+            app.AppKey = newKey;
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { appKey = newKey });
         });
 
         admin.MapDelete("/apps/{key}", async (string key, AppDbContext db) =>
@@ -106,6 +127,47 @@ public static class AdminEndpoint
             await db.SaveChangesAsync();
 
             return Results.Ok(new { deleted = true });
+        });
+
+        admin.MapPatch("/packages/{id:int}", async (int id, UpdatePackageRequest req, AppDbContext db) =>
+        {
+            var pkg = await db.Packages.Include(p => p.App).FirstOrDefaultAsync(p => p.Id == id);
+            if (pkg is null)
+                return Results.NotFound(new { error = "Package not found" });
+
+            if (req.Version is not null)
+            {
+                if (string.IsNullOrWhiteSpace(req.Version))
+                    return Results.BadRequest(new { error = "Version cannot be empty" });
+                pkg.Version = req.Version;
+                pkg.App.CurrentVersion = req.Version;
+            }
+
+            if (req.DownloadUrl is not null)
+            {
+                if (string.IsNullOrWhiteSpace(req.DownloadUrl))
+                    return Results.BadRequest(new { error = "Download URL cannot be empty" });
+                pkg.DownloadUrl = req.DownloadUrl;
+            }
+
+            if (req.ReleaseNotes is not null)
+                pkg.ReleaseNotes = req.ReleaseNotes;
+
+            if (req.IsMandatory is not null)
+                pkg.IsMandatory = req.IsMandatory.Value;
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new
+            {
+                pkg.Id,
+                pkg.Version,
+                pkg.DownloadUrl,
+                pkg.ReleaseNotes,
+                pkg.IsMandatory,
+                pkg.IsFullPackage,
+                pkg.CreatedAt
+            });
         });
 
         admin.MapDelete("/packages/{id:int}", async (int id, AppDbContext db) =>
@@ -137,6 +199,7 @@ public static class AdminEndpoint
                 pkg.FileSize,
                 pkg.ReleaseNotes,
                 pkg.IsMandatory,
+                pkg.IsFullPackage,
                 pkg.CreatedAt,
                 App = new { pkg.App.AppName, pkg.App.AppKey }
             });

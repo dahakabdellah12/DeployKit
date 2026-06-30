@@ -17,15 +17,6 @@ public class CloudService
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
     }
 
-    public async Task<RegisterResult> RegisterAsync(string appName)
-    {
-        var baseUrl = CloudUrl ?? "http://localhost:5000";
-        var url = $"{baseUrl.TrimEnd('/')}/v1/register?name={Uri.EscapeDataString(appName)}";
-        var response = await _http.PostAsync(url, null);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<RegisterResult>() ?? new RegisterResult();
-    }
-
     public async Task<UploadResult> UploadAsync(string apiKey, string version, string downloadUrl,
         string? releaseNotes = null, bool? mandatory = null)
     {
@@ -41,15 +32,6 @@ public class CloudService
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<UploadResult>() ?? new UploadResult();
     }
-}
-
-public class RegisterResult
-{
-    [JsonPropertyName("appKey")]
-    public string AppKey { get; set; } = "";
-
-    [JsonPropertyName("appName")]
-    public string AppName { get; set; } = "";
 }
 
 public class UploadResult

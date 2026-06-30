@@ -8,14 +8,14 @@
 
     <IsPackable>true</IsPackable>
     <PackageId>DeployKit.Integration</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Title>DeployKit Integration SDK</Title>
-    <Description>One-line auto-update SDK for .NET WPF desktop apps. Detects version, checks cloud for delta updates, shows update UI, and applies via updater.exe. Includes DeployKit.Core delta engine.</Description>
+    <Description>One-line auto-update SDK for .NET WPF desktop apps. Detects version, checks cloud for updates, shows update UI, and applies via updater.exe. Full-package updates with smart file-level delta extraction.</Description>
     <Authors>DeployKit</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/dahakabdellah12/DeployKit</PackageProjectUrl>
     <RepositoryUrl>https://github.com/dahakabdellah12/DeployKit</RepositoryUrl>
-    <PackageTags>update;deploy;delta;auto-update;deploykit;wpf</PackageTags>
+    <PackageTags>update;deploy;auto-update;deploykit;wpf</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
@@ -29,10 +29,14 @@
   <Target Name="_CopyUpdaterFiles" AfterTargets="_BuildUpdaterAndCore">
     <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.exe" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.dll" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.runtimeconfig.json" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.deps.json" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="..\DeployKit.Core\bin\$(Configuration)\net8.0\DeployKit.Core.dll" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
     <!-- Also copy to staging folder for packing -->
     <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.exe" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
     <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.dll" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.runtimeconfig.json" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\DeployKit.Updater\bin\$(Configuration)\net8.0-windows\DeployKit.Updater.deps.json" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
     <Copy SourceFiles="..\DeployKit.Core\bin\$(Configuration)\net8.0\DeployKit.Core.dll" DestinationFolder="$(TargetDir)updater_pack\" SkipUnchangedFiles="true" />
   </Target>
 
@@ -40,6 +44,8 @@
   <ItemGroup>
     <None Include="$(TargetDir)updater_pack\DeployKit.Updater.exe" Pack="true" PackagePath="tools\DeployKit.Updater.exe" />
     <None Include="$(TargetDir)updater_pack\DeployKit.Updater.dll" Pack="true" PackagePath="tools\DeployKit.Updater.dll" />
+    <None Include="$(TargetDir)updater_pack\DeployKit.Updater.runtimeconfig.json" Pack="true" PackagePath="tools\DeployKit.Updater.runtimeconfig.json" />
+    <None Include="$(TargetDir)updater_pack\DeployKit.Updater.deps.json" Pack="true" PackagePath="tools\DeployKit.Updater.deps.json" />
     <None Include="$(TargetDir)updater_pack\DeployKit.Core.dll" Pack="true" PackagePath="tools\DeployKit.Core.dll" />
   </ItemGroup>
 

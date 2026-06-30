@@ -3,6 +3,8 @@
     <ItemGroup>
       <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Updater.exe" />
       <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Updater.dll" />
+      <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Updater.runtimeconfig.json" />
+      <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Updater.deps.json" />
       <_DKUpdaterFiles Include="$(MSBuildThisFileDirectory)..\tools\DeployKit.Core.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(_DKUpdaterFiles)"

@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -6,7 +5,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
-using DeployKit.Core.Models;
 using DeployKit.Core.Services;
 using DeployKit.Gui.Helpers;
 using Microsoft.Win32;
@@ -15,33 +13,20 @@ namespace DeployKit.Gui.ViewModels;
 
 public class BuildViewModel : BaseViewModel
 {
-    private readonly FileComparer _comparer = new();
     private readonly PackageBuilder _builder = new();
     private readonly Action<ReleaseRecord>? _onReleaseCreated;
 
-    private string _oldDir = "";
-    public string OldDir { get => _oldDir; set => SetProperty(ref _oldDir, value); }
-
     private string _newDir = "";
-    public string NewDir { get => _newDir; set => SetProperty(ref _newDir, value); }
+    public string NewDir { get => _newDir; set { SetProperty(ref _newDir, value); UpdateCanBuild(); } }
 
     private string _appName = "";
     public string AppName { get => _appName; set => SetProperty(ref _appName, value); }
 
-    private string _sourceVersion = "";
-    public string SourceVersion { get => _sourceVersion; set => SetProperty(ref _sourceVersion, value); }
-
-    private string _targetVersion = "";
-    public string TargetVersion { get => _targetVersion; set => SetProperty(ref _targetVersion, value); }
+    private string _version = "";
+    public string Version { get => _version; set { SetProperty(ref _version, value); UpdateCanBuild(); } }
 
     private string _releaseNotes = "";
     public string ReleaseNotes { get => _releaseNotes; set => SetProperty(ref _releaseNotes, value); }
-
-    private bool _isComparing;
-    public bool IsComparing { get => _isComparing; set => SetProperty(ref _isComparing, value); }
-
-    private bool _hasResult;
-    public bool HasResult { get => _hasResult; set => SetProperty(ref _hasResult, value); }
 
     private string _statusMessage = "";
     public string StatusMessage { get => _statusMessage; set => SetProperty(ref _statusMessage, value); }
@@ -55,8 +40,8 @@ public class BuildViewModel : BaseViewModel
     private bool _isBuilding;
     public bool IsBuilding { get => _isBuilding; set => SetProperty(ref _isBuilding, value); }
 
-    private string _savingsInfo = "";
-    public string SavingsInfo { get => _savingsInfo; set => SetProperty(ref _savingsInfo, value); }
+    private bool _isMandatory;
+    public bool IsMandatory { get => _isMandatory; set => SetProperty(ref _isMandatory, value); }
 
     private bool _isWorking;
     public bool IsWorking { get => _isWorking; set => SetProperty(ref _isWorking, value); }
@@ -67,11 +52,7 @@ public class BuildViewModel : BaseViewModel
     private bool _canBuild;
     public bool CanBuild { get => _canBuild; set => SetProperty(ref _canBuild, value); }
 
-    public ObservableCollection<ChangeItem> Changes { get; } = [];
-
-    public RelayCommand SelectOldDirCommand { get; }
     public RelayCommand SelectNewDirCommand { get; }
-    public RelayCommandAsync CompareCommand { get; }
     public RelayCommandAsync BuildPackageCommand { get; }
     public RelayCommandAsync UploadToCloudCommand { get; }
     public RelayCommandAsync CreateGitHubReleaseCommand { get; }
@@ -79,13 +60,16 @@ public class BuildViewModel : BaseViewModel
     public BuildViewModel(Action<ReleaseRecord>? onReleaseCreated = null)
     {
         _onReleaseCreated = onReleaseCreated;
-        SelectOldDirCommand = new RelayCommand(_ => SelectFolder(nameof(OldDir)));
-        SelectNewDirCommand = new RelayCommand(_ => SelectFolder(nameof(NewDir)));
-        CompareCommand = new RelayCommandAsync(async _ => await CompareAsync());
+        SelectNewDirCommand = new RelayCommand(_ => SelectNewDir());
         BuildPackageCommand = new RelayCommandAsync(async _ => await BuildPackageAsync());
         UploadToCloudCommand = new RelayCommandAsync(async _ => await UploadToCloudAsync());
         CreateGitHubReleaseCommand = new RelayCommandAsync(async _ => await CreateGitHubReleaseAsync());
         CheckApiKey();
+    }
+
+    private void UpdateCanBuild()
+    {
+        CanBuild = !string.IsNullOrWhiteSpace(NewDir) && !string.IsNullOrWhiteSpace(Version);
     }
 
     private void CheckApiKey()
@@ -105,136 +89,81 @@ public class BuildViewModel : BaseViewModel
         catch { HasApiKey = false; }
     }
 
-    private static string? DetectVersionFromDir(string dir)
-    {
-        try
-        {
-            var exeFiles = Directory.GetFiles(dir, "*.exe", SearchOption.TopDirectoryOnly);
-            foreach (var exe in exeFiles)
-            {
-                var ver = FileVersionInfo.GetVersionInfo(exe);
-                if (ver.FileVersion != null)
-                {
-                    var parts = ver.FileVersion.Split('.');
-                    if (parts.Length >= 2) return $"{parts[0]}.{parts[1]}.{parts[2]}";
-                }
-            }
-        }
-        catch { }
-        return null;
-    }
-
-    private void SelectFolder(string property)
+    private void SelectNewDir()
     {
         var dialog = new OpenFolderDialog();
         if (dialog.ShowDialog() == true)
         {
-            if (property == nameof(OldDir))
-            {
-                OldDir = dialog.FolderName;
-                DetectVersions();
-            }
-            else
-            {
-                NewDir = dialog.FolderName;
-                DetectVersions();
-            }
+            NewDir = dialog.FolderName;
+            AutoDetect();
         }
     }
 
-    private void DetectVersions()
+    private void AutoDetect()
     {
-        if (!string.IsNullOrWhiteSpace(OldDir))
-            SourceVersion = DetectVersionFromDir(OldDir) ?? SourceVersion;
-        if (!string.IsNullOrWhiteSpace(NewDir))
-            TargetVersion = DetectVersionFromDir(NewDir) ?? TargetVersion;
-        if (string.IsNullOrWhiteSpace(AppName) && !string.IsNullOrWhiteSpace(OldDir))
-            AppName = Path.GetFileName(OldDir);
-    }
+        if (string.IsNullOrWhiteSpace(AppName))
+            AppName = Path.GetFileName(NewDir);
 
-    private async Task CompareAsync()
-    {
-        if (string.IsNullOrWhiteSpace(OldDir) || string.IsNullOrWhiteSpace(NewDir))
+        if (string.IsNullOrWhiteSpace(Version))
         {
-            StatusMessage = "الرجاء اختيار المجلدين";
-            return;
-        }
-
-        IsComparing = true;
-        HasResult = false;
-        CanBuild = false;
-        StatusMessage = "جاري المقارنة...";
-        Changes.Clear();
-
-        try
-        {
-            var result = await _comparer.CompareAsync(OldDir, NewDir);
-
-            foreach (var f in result.Added)
-                Changes.Add(new ChangeItem { Path = f.RelativePath, Type = "➕ جديد", Size = FormatSize(f.NewSize), Color = "#4CAF50" });
-            foreach (var f in result.Modified)
-                Changes.Add(new ChangeItem { Path = f.RelativePath, Type = "📝 معدل", Size = FormatSize(f.NewSize), Color = "#FF9800" });
-            foreach (var f in result.Deleted)
-                Changes.Add(new ChangeItem { Path = f.RelativePath, Type = "🗑️ حذف", Size = "", Color = "#F44336" });
-
-            DetectVersions();
-
-            var fullSize = result.FullPackageSize;
-            var patchSize = result.PackageSize;
-            var savings = fullSize > 0 ? (1.0 - (double)patchSize / fullSize) * 100 : 0;
-
-            if (savings > 0)
-                SavingsInfo = $"💾 التوفير بالباتشات: {FormatSize(fullSize)} → {FormatSize(patchSize)} (توفير {savings:F1}%)";
-            else
-                SavingsInfo = "";
-
-            StatusMessage = $"تم العثور على {result.TotalChanged} تغييرات | حجم الحزمة: {FormatSize(result.PackageSize)}";
-            HasResult = true;
-            CanBuild = !string.IsNullOrWhiteSpace(SourceVersion) && !string.IsNullOrWhiteSpace(TargetVersion);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"خطأ: {ex.Message}";
-        }
-        finally
-        {
-            IsComparing = false;
+            try
+            {
+                var exeFiles = Directory.GetFiles(NewDir, "*.exe", SearchOption.TopDirectoryOnly);
+                foreach (var exe in exeFiles)
+                {
+                    var ver = FileVersionInfo.GetVersionInfo(exe);
+                    if (ver.FileVersion != null)
+                    {
+                        var parts = ver.FileVersion.Split('.');
+                        if (parts.Length >= 2)
+                        {
+                            Version = $"{parts[0]}.{parts[1]}.{parts[2]}";
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
     }
 
     private async Task BuildPackageAsync()
     {
-        if (!HasResult) return;
+        if (string.IsNullOrWhiteSpace(NewDir))
+        {
+            StatusMessage = "الرجاء اختيار مجلد التطبيق الجديد";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(Version))
+        {
+            StatusMessage = "الرجاء إدخال رقم الإصدار";
+            return;
+        }
 
         var saveDialog = new SaveFileDialog
         {
             Filter = "ZIP files (*.zip)|*.zip",
-            FileName = $"{AppName}_v{SourceVersion}_to_v{TargetVersion}.zip"
+            FileName = $"{AppName}_v{Version}.zip"
         };
 
         if (saveDialog.ShowDialog() != true) return;
 
         IsBuilding = true;
-        HasResult = false;
         StatusMessage = "جاري بناء حزمة التحديث...";
         Progress = 0;
 
         try
         {
-            var result = await _comparer.CompareAsync(OldDir, NewDir);
-            OutputPath = await _builder.BuildAsync(OldDir, NewDir, result, AppName, SourceVersion, TargetVersion, saveDialog.FileName);
+            OutputPath = await _builder.BuildFullPackageAsync(NewDir, AppName, Version, saveDialog.FileName);
             Progress = 100;
 
             var fileSize = new FileInfo(OutputPath).Length;
-            var fullSize = result.FullPackageSize;
-            var patchSize = result.PackageSize;
-            var totalSavings = fullSize > 0 ? (1.0 - (double)patchSize / fullSize) * 100 : 0;
 
             var record = new ReleaseRecord
             {
                 AppName = AppName,
-                FromVersion = SourceVersion,
-                ToVersion = TargetVersion,
+                FromVersion = "",
+                ToVersion = Version,
                 ReleaseNotes = ReleaseNotes,
                 ZipPath = OutputPath,
                 FileSize = fileSize,
@@ -242,10 +171,7 @@ public class BuildViewModel : BaseViewModel
             };
 
             _onReleaseCreated?.Invoke(record);
-
             StatusMessage = $"✅ تم إنشاء الحزمة: {OutputPath} ({FormatSize(fileSize)})";
-            if (totalSavings > 0)
-                StatusMessage += $" | توفير: {totalSavings:F1}%";
         }
         catch (Exception ex)
         {
@@ -254,7 +180,6 @@ public class BuildViewModel : BaseViewModel
         finally
         {
             IsBuilding = false;
-            HasResult = true;
         }
     }
 
@@ -291,9 +216,9 @@ public class BuildViewModel : BaseViewModel
             var cloud = new CloudService(data.CloudUrl);
             var downloadUrl = data.GitHubRawUrl;
             if (string.IsNullOrWhiteSpace(downloadUrl))
-                downloadUrl = $"https://github.com/{data.GitHubUser}/{data.GitHubRepo}/releases/download/v{TargetVersion}/update.zip";
+                downloadUrl = $"https://github.com/{data.GitHubUser}/{data.GitHubRepo}/releases/download/v{Version}/update.zip";
 
-            var result = await cloud.UploadAsync(data.ApiKey, TargetVersion, downloadUrl, ReleaseNotes);
+            var result = await cloud.UploadAsync(data.ApiKey, Version, downloadUrl, ReleaseNotes, IsMandatory);
             StatusMessage = $"☁️✅ تم التسجيل! الإصدار {result.Version} في السحابة";
         }
         catch (Exception ex)
@@ -322,9 +247,9 @@ public class BuildViewModel : BaseViewModel
 
         try
         {
-            var tag = $"v{TargetVersion}";
+            var tag = $"v{Version}";
             var repo = $"{data.GitHubUser}/{data.GitHubRepo}";
-            var zipName = $"{AppName}_v{TargetVersion}.zip";
+            var zipName = $"{AppName}_v{Version}.zip";
 
             var createUrl = $"https://api.github.com/repos/{repo}/releases";
             using var client = new HttpClient();
@@ -378,12 +303,4 @@ public class BuildViewModel : BaseViewModel
         public string? GitHubToken { get; set; }
         public string? GitHubRawUrl { get; set; }
     }
-}
-
-public class ChangeItem
-{
-    public string Path { get; set; } = "";
-    public string Type { get; set; } = "";
-    public string Size { get; set; } = "";
-    public string Color { get; set; } = "";
 }

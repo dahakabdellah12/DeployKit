@@ -9,6 +9,7 @@ public class UpdateResult
     public string PackageHash { get; set; } = "";
     public string ReleaseNotes { get; set; } = "";
     public bool IsMandatory { get; set; }
+    public bool IsFullPackage { get; set; }
     public string? ErrorMessage { get; set; }
 
     public bool IsSuccess => ErrorMessage == null;

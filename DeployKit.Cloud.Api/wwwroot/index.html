@@ -9,7 +9,6 @@
   body { font-family:system-ui,sans-serif; background:#0f0f13; color:#e4e4e7; min-height:100vh; }
   .container { max-width:1200px; margin:0 auto; padding:24px; }
   h1 { font-size:24px; font-weight:600; margin-bottom:24px; color:#fafafa; }
-  h1 small { font-size:14px; font-weight:400; color:#a1a1aa; margin-right:12px; }
   .card { background:#18181b; border:1px solid #27272a; border-radius:10px; padding:20px; margin-bottom:20px; }
   .card h2 { font-size:16px; font-weight:600; margin-bottom:12px; color:#d4d4d8; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
@@ -20,6 +19,7 @@
   .badge-green { background:#166534; color:#86efac; }
   .badge-yellow { background:#854d0e; color:#fde68a; }
   .badge-gray { background:#27272a; color:#a1a1aa; }
+  .badge-blue { background:#1e3a5f; color:#93c5fd; }
   .btn { display:inline-block; padding:6px 14px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; border:none; text-decoration:none; }
   .btn-primary { background:#3b82f6; color:white; }
   .btn-primary:hover { background:#2563eb; }
@@ -31,10 +31,9 @@
   .login-box input { width:100%; padding:10px 14px; border-radius:6px; border:1px solid #27272a; background:#18181b; color:#e4e4e7; font-size:15px; margin:12px 0; }
   .login-box input:focus { outline:none; border-color:#3b82f6; }
   .error { color:#f87171; font-size:13px; margin-top:8px; }
+  .success { color:#86efac; font-size:13px; margin-top:8px; }
   .header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
-  .header-bar .app-info { font-size:14px; color:#a1a1aa; }
   .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  .detail-grid .card:nth-child(3) { grid-column:span 2; }
   .mt-12 { margin-top:12px; }
   .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:100; }
   .modal { background:#18181b; border:1px solid #27272a; border-radius:12px; padding:24px; max-width:500px; width:90%; }
@@ -48,14 +47,28 @@
   .stat { text-align:center; padding:16px; }
   .stat-value { font-size:28px; font-weight:700; color:#fafafa; }
   .stat-label { font-size:12px; color:#71717a; margin-top:4px; }
+  .key-display { font-family:monospace; font-size:13px; color:#fbbf24; word-break:break-all; background:#0f0f13; padding:10px; border-radius:6px; margin-top:4px; }
+  .pointer { cursor:pointer; }
+  .copy-hint { font-size:11px; color:#71717a; cursor:pointer; }
+  .copy-hint:hover { color:#a1a1aa; }
   @media(max-width:768px) { .detail-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <div id="login" class="login-box container">
   <h1>DeployKit Dashboard</h1>
-  <div class="card">
-    <input type="password" id="adminKey" placeholder="Admin Key" onkeydown="if(event.key==='Enter') login()">
+  <div id="setupForm" class="card hidden">
+    <h2>إنشاء حساب المسؤول</h2>
+    <p style="font-size:13px;color:#a1a1aa">هذه أول مرة — قم بإنشاء كلمة مرور المسؤول</p>
+    <input type="text" id="setupUser" placeholder="اسم المستخدم" autocomplete="off" onkeydown="if(event.key==='Enter') setup()">
+    <input type="password" id="setupPass" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter') setup()">
+    <button class="btn btn-primary" onclick="setup()" style="width:100%">إنشاء الحساب</button>
+    <div id="setupError" class="error hidden"></div>
+  </div>
+  <div id="loginForm" class="card">
+    <h2>تسجيل الدخول</h2>
+    <input type="text" id="loginUser" placeholder="اسم المستخدم" autocomplete="username" onkeydown="if(event.key==='Enter') login()">
+    <input type="password" id="loginPass" placeholder="كلمة المرور" autocomplete="current-password" onkeydown="if(event.key==='Enter') login()">
     <button class="btn btn-primary" onclick="login()" style="width:100%">دخول</button>
     <div id="loginError" class="error hidden"></div>
   </div>
@@ -99,7 +112,7 @@
       <button class="btn" onclick="hideRegisterModal()" style="background:#27272a;color:#e4e4e7">إلغاء</button>
       <button class="btn btn-primary" onclick="registerApp()">تسجيل</button>
     </div>
-    <div id="registerStatus" class="hidden mt-12" style="font-size:13px"></div>
+    <div id="registerStatus" class="hidden mt-12"></div>
     <div id="registerResult" class="hidden mt-12" style="background:#0f0f13;border-radius:6px;padding:12px;font-family:monospace;font-size:12px;word-break:break-all"></div>
   </div>
 </div>
@@ -113,7 +126,7 @@
     </div>
     <div class="form-group">
       <label>الإصدار الجديد</label>
-      <input id="upVersion" placeholder="1.1.0" dir="ltr">
+      <input id="upVersion" placeholder="2.0.1" dir="ltr">
     </div>
     <div class="form-group">
       <label>رابط التحميل (GitHub / Google Drive / ...)</label>
@@ -123,42 +136,57 @@
       <label>ملاحظات الإصدار</label>
       <textarea id="upNotes" placeholder="ما الجديد في هذا الإصدار..."></textarea>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#a1a1aa;margin-top:8px">
-      <input type="checkbox" id="upMandatory"> تحديث إجباري
-    </label>
-    <div class="btn-row">
-      <button class="btn" onclick="hideUploadModal()" style="background:#27272a;color:#e4e4e7">إلغاء</button>
-      <button class="btn btn-primary" onclick="uploadUpdate()">رفع</button>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#a1a1aa;margin-top:8px">
+        <input type="checkbox" id="upMandatory"> تحديث إجباري
+      </label>
+      <div style="margin-top:8px;padding:8px 12px;background:#1e3a5f;border-radius:6px;font-size:12px;color:#93c5fd">
+        📦 حزمة كاملة — تشتغل على أي إصدار سابق
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="hideUploadModal()" style="background:#27272a;color:#e4e4e7">إلغاء</button>
+        <button class="btn btn-primary" onclick="uploadUpdate()">رفع</button>
+      </div>
+      <div id="uploadStatus" class="hidden mt-12"></div>
     </div>
-    <div id="uploadStatus" class="error hidden mt-12"></div>
   </div>
-</div>
+
+  <div id="editModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>تعديل التحديث</h3>
+      <div class="form-group">
+        <label>الإصدار</label>
+        <input id="editVersion" placeholder="2.0.1" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label>رابط التحميل</label>
+        <input id="editUrl" placeholder="https://github.com/.../update.zip" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label>ملاحظات الإصدار</label>
+        <textarea id="editNotes" placeholder="ما الجديد في هذا الإصدار..."></textarea>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#a1a1aa;margin-top:8px">
+        <input type="checkbox" id="editMandatory"> تحديث إجباري
+      </label>
+      <div class="btn-row">
+        <button class="btn" onclick="hideEditModal()" style="background:#27272a;color:#e4e4e7">إلغاء</button>
+        <button class="btn btn-primary" onclick="saveEditPackage()">حفظ</button>
+      </div>
+      <div id="editStatus" class="hidden mt-12"></div>
+    </div>
+  </div>
 
 <script>
-let adminKey = '';
+let token = localStorage.getItem('dk_token');
 let baseUrl = window.location.origin;
-
-function login() {
-  const key = document.getElementById('adminKey').value.trim();
-  if (!key) return;
-  adminKey = key;
-  localStorage.setItem('dk_admin_key', key);
-  document.getElementById('loginError').classList.add('hidden');
-  loadApps();
-}
-
-function logout() {
-  adminKey = '';
-  localStorage.removeItem('dk_admin_key');
-  document.getElementById('login').classList.remove('hidden');
-  document.getElementById('app').classList.add('hidden');
-}
+let currentAppKey = null;
+let currentPackages = [];
 
 async function api(method, path, body) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
-  const opts = { method, headers: { 'X-Admin-Key': adminKey }, signal: controller.signal };
-  if (body && typeof body === 'object' && !(body instanceof FormData)) {
+  const opts = { method, headers: { 'Authorization': 'Bearer ' + token }, signal: controller.signal };
+  if (body) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   }
@@ -166,28 +194,103 @@ async function api(method, path, body) {
     const res = await fetch(baseUrl + path, opts);
     clearTimeout(timeoutId);
     if (res.status === 401) {
-      const errBody = await res.json().catch(()=>({ error: 'Unauthorized - Admin Key incorrect' }));
-      throw new Error(errBody.error || 'Unauthorized');
+      localStorage.removeItem('dk_token');
+      showLogin();
+      throw new Error('انتهت الجلسة. سجل دخولك مرة أخرى');
     }
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || res.statusText); }
     return res.status === 204 ? null : res.json();
   } catch(e) {
     clearTimeout(timeoutId);
-    if (e.name === 'AbortError') throw new Error('Request timed out. The server may be waking up (Render free tier) - try again.');
+    if (e.name === 'AbortError') throw new Error('انتهت مهلة الطلب. حاول مرة أخرى');
     throw e;
   }
+}
+
+async function init() {
+  try {
+    const status = await fetch(baseUrl + '/v1/admin/status').then(r => r.json());
+    if (!status.hasAdmin) {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('setupForm').classList.remove('hidden');
+    } else {
+      document.getElementById('setupForm').classList.add('hidden');
+      document.getElementById('loginForm').classList.remove('hidden');
+    }
+  } catch(e) {
+    document.getElementById('loginError').textContent = 'فشل الاتصال بالخادم';
+    document.getElementById('loginError').classList.remove('hidden');
+  }
+
+  if (token) {
+    try {
+      const apps = await api('GET', '/v1/admin/apps');
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      renderApps(apps || []);
+    } catch {
+      showLogin();
+    }
+  }
+}
+
+function showLogin() {
+  token = '';
+  localStorage.removeItem('dk_token');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login').classList.remove('hidden');
+}
+
+async function setup() {
+  const username = document.getElementById('setupUser').value.trim();
+  const password = document.getElementById('setupPass').value.trim();
+  const error = document.getElementById('setupError');
+  if (!username || !password) { error.textContent = 'الرجاء ملء جميع الحقول'; error.classList.remove('hidden'); return; }
+  try {
+    const res = await fetch(baseUrl + '/v1/admin/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    }).then(r => r.json());
+    if (res.error) { error.textContent = res.error; error.classList.remove('hidden'); return; }
+    token = res.token;
+    localStorage.setItem('dk_token', token);
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    loadApps();
+  } catch(e) { error.textContent = '❌ ' + e.message; error.classList.remove('hidden'); }
+}
+
+async function login() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  const error = document.getElementById('loginError');
+  if (!username || !password) { error.textContent = 'الرجاء إدخال اسم المستخدم وكلمة المرور'; error.classList.remove('hidden'); return; }
+  try {
+    const res = await fetch(baseUrl + '/v1/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    }).then(r => r.json());
+    if (res.error) { error.textContent = res.error; error.classList.remove('hidden'); return; }
+    token = res.token;
+    localStorage.setItem('dk_token', token);
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    loadApps();
+  } catch(e) { error.textContent = '❌ ' + e.message; error.classList.remove('hidden'); }
+}
+
+function logout() {
+  localStorage.removeItem('dk_token');
+  showLogin();
 }
 
 async function loadApps() {
   try {
     const apps = await api('GET', '/v1/admin/apps');
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
     renderApps(apps || []);
-  } catch(e) {
-    document.getElementById('loginError').textContent = e.message;
-    document.getElementById('loginError').classList.remove('hidden');
-  }
+  } catch(e) { alert(e.message); }
 }
 
 function renderApps(apps) {
@@ -198,12 +301,12 @@ function renderApps(apps) {
   empty.classList.add('hidden');
   apps.forEach(a => {
     body.innerHTML += `<tr>
-      <td><a href="#" onclick="showApp('${a.appKey}');return false" style="color:#60a5fa;text-decoration:none">${a.appName}</a></td>
-      <td style="font-family:monospace;font-size:12px">${a.appKey}</td>
-      <td><span class="badge badge-green">v${a.currentVersion}</span></td>
+      <td><a href="#" onclick="showApp('${esc(a.appKey)}');return false" style="color:#60a5fa;text-decoration:none">${esc(a.appName)}</a></td>
+      <td style="font-family:monospace;font-size:12px">${esc(a.appKey)}</td>
+      <td><span class="badge badge-green">v${esc(a.currentVersion)}</span></td>
       <td>${a.packageCount}</td>
       <td style="font-size:12px;color:#a1a1aa">${new Date(a.createdAt).toLocaleDateString('ar-SA')}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteApp('${a.appKey}')">حذف</button></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteApp('${esc(a.appKey)}')">حذف</button></td>
     </tr>`;
   });
 
@@ -214,46 +317,55 @@ function renderApps(apps) {
   `;
 }
 
+function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 async function showApp(key) {
   try {
     const d = await api('GET', `/v1/admin/apps/${key}`);
     if (!d) return;
+    currentAppKey = key;
+    currentPackages = d.packages || [];
     document.getElementById('appsBody').parentElement.parentElement.classList.add('hidden');
     document.getElementById('appDetail').classList.remove('hidden');
     const html = `
       <div class="detail-grid">
         <div class="card">
-          <h2>${d.appName}</h2>
-          <div style="font-size:12px;color:#a1a1aa">🔑 API Key: <span style="font-family:monospace">${d.appKey}</span></div>
-          <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${d.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح</div>
-          <div style="margin-top:8px"><span class="badge badge-green">v${d.currentVersion}</span></div>
+          <h2>${esc(d.appName)}</h2>
+          <div style="font-size:12px;color:#a1a1aa;margin-top:8px">🔑 API Key</div>
+          <div class="key-display">${esc(d.appKey)}</div>
+          <div class="copy-hint" onclick="copyText('${esc(d.appKey)}')">📋 نسخ المفتاح</div>
+          <div style="margin-top:8px"><span class="badge badge-green">v${esc(d.currentVersion)}</span></div>
           <div style="margin-top:8px;font-size:12px;color:#71717a">${new Date(d.createdAt).toLocaleDateString('ar-SA')}</div>
+          <div style="margin-top:12px"><button class="btn btn-sm" style="background:#1e3a5f;color:#93c5fd" onclick="regenerateKey('${esc(d.appKey)}')">🔄 إعادة توليد المفتاح</button></div>
         </div>
         <div class="card">
           <h2>حذف التطبيق</h2>
           <div style="font-size:13px;color:#a1a1aa;margin-bottom:12px">هذا سيحذف التطبيق وكل تحديثاته</div>
-          <button class="btn btn-danger btn-sm" onclick="if(confirm('متأكد؟')) { deleteApp('${d.appKey}'); hideDetail(); }">حذف التطبيق</button>
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('متأكد؟')) { deleteApp('${esc(d.appKey)}'); hideDetail(); }">حذف التطبيق</button>
         </div>
       </div>
       <div class="card">
         <h2>التحديثات (${d.packages.length})</h2>
         <table>
-          <thead><tr><th>#</th><th>الإصدار</th><th>رابط التحميل</th><th>الحجم</th><th>إجباري</th><th>التاريخ</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>الإصدار</th><th>رابط التحميل</th><th>النوع</th><th>إجباري</th><th>التاريخ</th><th></th></tr></thead>
           <tbody>
             ${d.packages.length === 0 ? '<tr><td colspan="7" class="empty">لا توجد تحديثات</td></tr>' :
             d.packages.map(p => `<tr>
               <td>${p.id}</td>
-              <td><span class="badge badge-green">v${p.version}</span></td>
-              <td><a href="${p.downloadUrl}" target="_blank" style="color:#60a5fa;font-size:12px">تحميل</a></td>
-              <td>${p.fileSize ? (p.fileSize / 1024).toFixed(1) + ' KB' : '—'}</td>
+              <td><span class="badge badge-green">v${esc(p.version)}</span></td>
+              <td><a href="${esc(p.downloadUrl)}" target="_blank" style="color:#60a5fa;font-size:12px">تحميل</a></td>
+              <td><span class="badge badge-blue">كاملة</span></td>
               <td>${p.isMandatory ? '<span class="badge badge-yellow">إجباري</span>' : '<span class="badge badge-gray">اختياري</span>'}</td>
               <td style="font-size:12px;color:#a1a1aa">${new Date(p.createdAt).toLocaleDateString('ar-SA')}</td>
-              <td><button class="btn btn-danger btn-sm" onclick="deletePackage(${p.id})">حذف</button></td>
+              <td style="white-space:nowrap">
+                <button class="btn btn-sm" style="background:#1e3a5f;color:#93c5fd;margin-left:4px" onclick="showEditModal(${p.id})">تعديل</button>
+                <button class="btn btn-danger btn-sm" onclick="deletePackage(${p.id})">حذف</button>
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      ${d.packages.length > 0 ? `<div class="card"><h2>ملاحظات الإصدار الأخير</h2><pre style="font-size:13px;color:#a1a1aa;white-space:pre-wrap;margin-top:8px">${d.packages[0].releaseNotes || 'لا توجد ملاحظات'}</pre></div>` : ''}
+      ${d.packages.length > 0 ? `<div class="card"><h2>ملاحظات الإصدار الأخير</h2><pre style="font-size:13px;color:#a1a1aa;white-space:pre-wrap;margin-top:8px">${esc(d.packages[0].releaseNotes) || 'لا توجد ملاحظات'}</pre></div>` : ''}
     `;
     document.getElementById('detailContent').innerHTML = html;
   } catch(e) { alert(e.message); }
@@ -266,10 +378,7 @@ function hideDetail() {
 
 async function deleteApp(key) {
   if (!confirm('حذف هذا التطبيق وكل تحديثاته؟')) return;
-  try {
-    await api('DELETE', `/v1/admin/apps/${key}`);
-    loadApps();
-  } catch(e) { alert(e.message); }
+  try { await api('DELETE', `/v1/admin/apps/${key}`); loadApps(); } catch(e) { alert(e.message); }
 }
 
 async function deletePackage(id) {
@@ -280,6 +389,17 @@ async function deletePackage(id) {
       document.getElementById('detailContent').innerHTML = '';
     loadApps();
     hideDetail();
+  } catch(e) { alert(e.message); }
+}
+
+async function regenerateKey(key) {
+  if (!confirm('تأكيد إعادة توليد مفتاح API؟ المفتاح القديم سيتوقف فوراً')) return;
+  try {
+    const res = await api('POST', `/v1/admin/apps/${key}/regenerate-key`);
+    if (res && res.appKey) {
+      alert('✅ تم إعادة توليد المفتاح بنجاح');
+      showApp(res.appKey);
+    }
   } catch(e) { alert(e.message); }
 }
 
@@ -301,10 +421,10 @@ async function registerApp() {
     const res = await api('POST', '/v1/admin/register', { appName: name });
     if (!res) return;
     result.innerHTML = `<div style="color:#86efac;margin-bottom:8px">✅ تم التسجيل!</div>
-      <div>الاسم: ${res.appName}</div>
+      <div>الاسم: ${esc(res.appName)}</div>
       <div style="margin-top:12px">🔑 API Key:</div>
-      <div style="font-family:monospace;font-size:14px;color:#fbbf24;word-break:break-all">${res.appKey}</div>
-      <div style="font-size:11px;color:#71717a;cursor:pointer;margin-top:4px" onclick="navigator.clipboard.writeText('${res.appKey}');this.textContent='✅ تم النسخ'">📋 نسخ المفتاح</div>`;
+      <div class="key-display">${esc(res.appKey)}</div>
+      <div class="copy-hint" onclick="copyText('${esc(res.appKey)}')">📋 نسخ المفتاح</div>`;
     result.classList.remove('hidden');
     status.classList.add('hidden');
     document.getElementById('regName').value = '';
@@ -323,13 +443,15 @@ async function uploadUpdate() {
   const mandatory = document.getElementById('upMandatory').checked;
   const status = document.getElementById('uploadStatus');
 
-  if (!key || !version || !url) { status.textContent = 'الرجاء ملء جميع الحقول المطلوبة (API Key, الإصدار, رابط التحميل)'; status.classList.remove('hidden'); return; }
+  if (!key || !version || !url) { status.textContent = 'الرجاء ملء جميع الحقول المطلوبة'; status.style.color = '#f87171'; status.classList.remove('hidden'); return; }
 
   try {
-    const query = `key=${encodeURIComponent(key)}&version=${encodeURIComponent(version)}&url=${encodeURIComponent(url)}${notes ? '&notes=' + encodeURIComponent(notes) : ''}${mandatory ? '&mandatory=true' : ''}`;
+    let query = `key=${encodeURIComponent(key)}&version=${encodeURIComponent(version)}&url=${encodeURIComponent(url)}`;
+    if (notes) query += `&notes=${encodeURIComponent(notes)}`;
+    if (mandatory) query += '&mandatory=true';
     const res = await api('POST', `/v1/upload?${query}`);
     if (!res) return;
-    status.textContent = `✅ تم الإضافة! v${version} — ${res.isMandatory ? 'إجباري' : 'اختياري'}`;
+    status.textContent = `✅ تم الإضافة! v${version} — ${res.isMandatory ? 'إجباري' : 'اختياري'} (حزمة كاملة)`;
     status.style.color = '#86efac';
     status.classList.remove('hidden');
     document.getElementById('upKey').value = '';
@@ -341,11 +463,58 @@ async function uploadUpdate() {
   } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }
 }
 
-const savedKey = localStorage.getItem('dk_admin_key');
-if (savedKey && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
-  adminKey = savedKey;
-  loadApps();
+function showEditModal(pkgId) {
+  const pkg = currentPackages.find(p => p.id === pkgId);
+  if (!pkg) return;
+  document.getElementById('editVersion').value = pkg.version;
+  document.getElementById('editUrl').value = pkg.downloadUrl;
+  document.getElementById('editNotes').value = pkg.releaseNotes || '';
+  document.getElementById('editMandatory').checked = pkg.isMandatory;
+  document.getElementById('editModal').dataset.pkgId = pkgId;
+  document.getElementById('editStatus').classList.add('hidden');
+  document.getElementById('editModal').classList.remove('hidden');
 }
+function hideEditModal() {
+  document.getElementById('editModal').classList.add('hidden');
+  document.getElementById('editStatus').classList.add('hidden');
+}
+async function saveEditPackage() {
+  const pkgId = parseInt(document.getElementById('editModal').dataset.pkgId);
+  const version = document.getElementById('editVersion').value.trim();
+  const url = document.getElementById('editUrl').value.trim();
+  const notes = document.getElementById('editNotes').value.trim();
+  const mandatory = document.getElementById('editMandatory').checked;
+  const status = document.getElementById('editStatus');
+
+  if (!version || !url) { status.textContent = 'الإصدار والرابط مطلوبان'; status.style.color = '#f87171'; status.classList.remove('hidden'); return; }
+
+  try {
+    const res = await api('PATCH', `/v1/admin/packages/${pkgId}`, {
+      version, downloadUrl: url, releaseNotes: notes, isMandatory: mandatory
+    });
+    if (!res) return;
+    status.textContent = '✅ تم الحفظ!';
+    status.style.color = '#86efac';
+    status.classList.remove('hidden');
+    setTimeout(() => { hideEditModal(); if (currentAppKey) showApp(currentAppKey); }, 800);
+  } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ تم النسخ!');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('✅ تم النسخ!');
+  });
+}
+
+init();
 </script>
 </body>
 </html>

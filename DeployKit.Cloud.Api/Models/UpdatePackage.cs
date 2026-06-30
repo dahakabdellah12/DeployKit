@@ -21,6 +21,11 @@ public class UpdatePackage
 
     public bool IsMandatory { get; set; }
 
+    public bool IsFullPackage { get; set; }
+
+    [MaxLength(16)]
+    public string MinVersion { get; set; } = "0.0.0";
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public AppRegistration App { get; set; } = null!;

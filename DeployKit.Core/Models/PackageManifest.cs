@@ -6,14 +6,17 @@ public class PackageManifest
     public string AppName { get; set; } = string.Empty;
     public string SourceVersion { get; set; } = string.Empty;
     public string TargetVersion { get; set; } = string.Empty;
+    public bool IsFullPackage { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     private List<FileEntry> _added = [];
     private List<ModifiedEntry> _modified = [];
     private List<DeletedEntry> _deleted = [];
+    private List<FileEntry> _allFiles = [];
 
     public List<FileEntry> Added { get => _added; set => _added = value ?? []; }
     public List<ModifiedEntry> Modified { get => _modified; set => _modified = value ?? []; }
     public List<DeletedEntry> Deleted { get => _deleted; set => _deleted = value ?? []; }
+    public List<FileEntry> AllFiles { get => _allFiles; set => _allFiles = value ?? []; }
 }
 
 public class FileEntry

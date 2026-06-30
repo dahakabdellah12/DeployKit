@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
-using DeployKit.Core.Services;
 using DeployKit.Integration.Models;
 
 namespace DeployKit.Integration.UI;
@@ -17,7 +16,10 @@ public partial class UpdateWindow : Window
         _result = result;
         _config = config;
 
-        VersionText.Text = $"v{config.CurrentVersion}  →  v{result.LatestVersion}";
+        VersionText.Text = _result.IsFullPackage
+            ? $"v{config.CurrentVersion}  →  v{result.LatestVersion}  (📦 كامل)"
+            : $"v{config.CurrentVersion}  →  v{result.LatestVersion}";
+
         NotesText.Text = string.IsNullOrWhiteSpace(result.ReleaseNotes)
             ? "لا توجد ملاحظات إصدار."
             : result.ReleaseNotes;
@@ -33,52 +35,40 @@ public partial class UpdateWindow : Window
         }
     }
 
-    private async void OnUpdateClick(object sender, RoutedEventArgs e)
+    private void OnUpdateClick(object sender, RoutedEventArgs e)
     {
-        UpdateBtn.IsEnabled = false;
-        LaterBtn.IsEnabled = false;
-        ProgressPanel.Visibility = Visibility.Visible;
+        var updaterPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DeployKit.Updater.exe");
+        if (!File.Exists(updaterPath))
+        {
+            MessageBox.Show(this,
+                $"لم يتم العثور على مشغل التحديث: {updaterPath}",
+                "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var targetDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+        var exeName = Path.GetFileName(Environment.ProcessPath!);
+        var args = $"--url \"{_result.DownloadUrl}\" --target \"{targetDir}\" --app \"{exeName}\" --version {_result.LatestVersion} --prev {_config.CurrentVersion} --pid {Environment.ProcessId}";
 
         try
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), "DeployKit", "downloads");
-            Directory.CreateDirectory(tempDir);
-            var zipPath = Path.Combine(tempDir, $"update_{Guid.NewGuid():N}.zip");
-
-            var client = new Services.UpdateClient();
-            DownloadProgress.Value = 0;
-
-            await client.DownloadPackageAsync(_result.DownloadUrl, zipPath,
-                new Progress<double>(p => Dispatcher.Invoke(() => DownloadProgress.Value = p)));
-
-            ProgressLabel.Text = "جاري تطبيق التحديث...";
-
-            var updaterPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DeployKit.Updater.exe");
-            var targetDir = AppDomain.CurrentDomain.BaseDirectory;
-            var exeName = Path.GetFileName(Environment.ProcessPath!);
-            var pid = Environment.ProcessId;
-            var args = $"--zip \"{zipPath}\" --target \"{targetDir}\" --app \"{exeName}\" --pid {pid} --prev {_config.CurrentVersion}";
-
             Process.Start(new ProcessStartInfo
             {
                 FileName = updaterPath,
                 Arguments = args,
-                UseShellExecute = true
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(updaterPath)
             });
-
-            Application.Current.Shutdown();
         }
         catch (Exception ex)
         {
             MessageBox.Show(this,
-                $"فشل التحديث: {ex.Message}",
-                "خطأ",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            UpdateBtn.IsEnabled = true;
-            LaterBtn.IsEnabled = true;
-            ProgressPanel.Visibility = Visibility.Collapsed;
+                $"فشل تشغيل مشغل التحديث: {ex.Message}",
+                "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
+
+        Application.Current.Shutdown();
     }
 
     private void OnLaterClick(object sender, RoutedEventArgs e)
@@ -97,23 +87,18 @@ public partial class UpdateWindow : Window
             return;
 
         RollbackBtn.IsEnabled = false;
-        ProgressPanel.Visibility = Visibility.Visible;
-        ProgressLabel.Text = "جارٍ الرجوع للإصدار السابق...";
 
         var error = await DeployKit.RollbackAsync();
         if (!string.IsNullOrEmpty(error))
         {
             MessageBox.Show(this, error, "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
             RollbackBtn.IsEnabled = true;
-            ProgressPanel.Visibility = Visibility.Collapsed;
         }
         else
         {
             MessageBox.Show(this,
                 "تم الرجوع للإصدار السابق بنجاح.",
-                "تم",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                "تم", MessageBoxButton.OK, MessageBoxImage.Information);
             DialogResult = true;
             Close();
         }
