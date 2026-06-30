@@ -26,31 +26,24 @@ public class MainViewModel : BaseViewModel
     }
 
     public string ThemeIcon => IsDarkTheme ? "☀️" : "🌙";
-    public string ThemeLabel => IsDarkTheme ? "فاتح" : "غامق";
 
     public HomeViewModel HomeVM { get; }
     public BuildViewModel BuildVM { get; }
-    public ApplyViewModel ApplyVM { get; }
-    public SettingsViewModel SettingsVM { get; }
 
     public RelayCommand ShowHomeCommand { get; }
     public RelayCommand ShowBuildCommand { get; }
-    public RelayCommand ShowApplyCommand { get; }
     public RelayCommand ShowSettingsCommand { get; }
     public RelayCommand ToggleThemeCommand { get; }
 
     public MainViewModel()
     {
         HomeVM = new HomeViewModel(this);
-        BuildVM = new BuildViewModel(HomeVM.AddRecent);
-        ApplyVM = new ApplyViewModel();
-        SettingsVM = new SettingsViewModel();
+        BuildVM = new BuildViewModel(HomeVM.AddRelease);
         _currentView = HomeVM;
 
         ShowHomeCommand = new RelayCommand(_ => NavigateTo(0));
         ShowBuildCommand = new RelayCommand(_ => NavigateTo(1));
-        ShowApplyCommand = new RelayCommand(_ => NavigateTo(2));
-        ShowSettingsCommand = new RelayCommand(_ => NavigateTo(3));
+        ShowSettingsCommand = new RelayCommand(_ => NavigateTo(2));
         ToggleThemeCommand = new RelayCommand(_ => ToggleTheme());
 
         ThemeService.Instance.ThemeChanged += OnThemeChanged;
@@ -63,8 +56,6 @@ public class MainViewModel : BaseViewModel
         {
             0 => HomeVM,
             1 => BuildVM,
-            2 => ApplyVM,
-            3 => SettingsVM,
             _ => HomeVM
         };
     }
@@ -78,6 +69,5 @@ public class MainViewModel : BaseViewModel
     {
         IsDarkTheme = ThemeService.Instance.IsDark;
         OnPropertyChanged(nameof(ThemeIcon));
-        OnPropertyChanged(nameof(ThemeLabel));
     }
 }

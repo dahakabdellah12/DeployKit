@@ -24,11 +24,32 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _apiKey, value);
     }
 
-    private string _cloudUrl = "http://localhost:5000";
+    private string _cloudUrl = "https://deploykit-gb81.onrender.com";
     public string CloudUrl
     {
         get => _cloudUrl;
         set => SetProperty(ref _cloudUrl, value);
+    }
+
+    private string _gitHubUser = "";
+    public string GitHubUser
+    {
+        get => _gitHubUser;
+        set => SetProperty(ref _gitHubUser, value);
+    }
+
+    private string _gitHubRepo = "";
+    public string GitHubRepo
+    {
+        get => _gitHubRepo;
+        set => SetProperty(ref _gitHubRepo, value);
+    }
+
+    private string _gitHubToken = "";
+    public string GitHubToken
+    {
+        get => _gitHubToken;
+        set => SetProperty(ref _gitHubToken, value);
     }
 
     private string _statusMessage = "";
@@ -70,6 +91,9 @@ public class SettingsViewModel : BaseViewModel
                     ApiKey = data.ApiKey ?? "";
                     CloudUrl = data.CloudUrl ?? "http://localhost:5000";
                     AppName = data.AppName ?? "";
+                    GitHubUser = data.GitHubUser ?? "";
+                    GitHubRepo = data.GitHubRepo ?? "";
+                    GitHubToken = data.GitHubToken ?? "";
                     HasApiKey = !string.IsNullOrEmpty(ApiKey);
                 }
             }
@@ -89,9 +113,13 @@ public class SettingsViewModel : BaseViewModel
             {
                 ApiKey = ApiKey,
                 CloudUrl = CloudUrl,
-                AppName = AppName
+                AppName = AppName,
+                GitHubUser = GitHubUser,
+                GitHubRepo = GitHubRepo,
+                GitHubToken = GitHubToken
             };
             File.WriteAllText(SettingsFile, JsonSerializer.Serialize(data));
+            StatusMessage = "✅ تم حفظ الإعدادات";
         }
         catch { }
     }
@@ -134,5 +162,8 @@ public class SettingsViewModel : BaseViewModel
         public string? ApiKey { get; set; }
         public string? CloudUrl { get; set; }
         public string? AppName { get; set; }
+        public string? GitHubUser { get; set; }
+        public string? GitHubRepo { get; set; }
+        public string? GitHubToken { get; set; }
     }
 }

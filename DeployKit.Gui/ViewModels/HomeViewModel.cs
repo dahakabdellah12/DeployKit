@@ -9,113 +9,137 @@ public class HomeViewModel : BaseViewModel
 {
     private readonly MainViewModel _main;
 
-    private static readonly string RecentFile =
+    private static readonly string HistoryFile =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "DeployKit", "recent.json");
+            "DeployKit", "releases.json");
 
-    public ObservableCollection<RecentProject> RecentProjects { get; } = [];
+    public ObservableCollection<ReleaseRecord> Releases { get; } = [];
 
-    private bool _hasRecentProjects;
-    public bool HasRecentProjects
+    private bool _hasReleases;
+    public bool HasReleases
     {
-        get => _hasRecentProjects;
-        set => SetProperty(ref _hasRecentProjects, value);
+        get => _hasReleases;
+        set => SetProperty(ref _hasReleases, value);
     }
 
-    private string _statusText = "جاهز للعمل";
-    public string StatusText
+    private int _totalReleases;
+    public int TotalReleases
     {
-        get => _statusText;
-        set => SetProperty(ref _statusText, value);
+        get => _totalReleases;
+        set => SetProperty(ref _totalReleases, value);
+    }
+
+    private string _totalSize = "";
+    public string TotalSize
+    {
+        get => _totalSize;
+        set => SetProperty(ref _totalSize, value);
+    }
+
+    private int _cloudCount;
+    public int CloudCount
+    {
+        get => _cloudCount;
+        set => SetProperty(ref _cloudCount, value);
     }
 
     public RelayCommand ShowBuildCommand { get; }
-    public RelayCommand ShowApplyCommand { get; }
-    public RelayCommand ClearRecentCommand { get; }
+    public RelayCommand ClearHistoryCommand { get; }
+    public RelayCommand OpenZipCommand { get; }
 
     public HomeViewModel(MainViewModel main)
     {
         _main = main;
 
         ShowBuildCommand = new RelayCommand(_ => _main.NavigateTo(1));
-        ShowApplyCommand = new RelayCommand(_ => _main.NavigateTo(2));
-        ClearRecentCommand = new RelayCommand(_ => ClearRecent());
+        ClearHistoryCommand = new RelayCommand(_ => ClearHistory());
+        OpenZipCommand = new RelayCommand(r => { if (r is ReleaseRecord rec) OpenZip(rec); });
 
-        LoadRecent();
+        LoadHistory();
     }
 
-    public void AddRecent(string name, string fromVer, string toVer, string oldDir, string newDir, string output)
+    public void AddRelease(ReleaseRecord record)
     {
-        var existing = RecentProjects.FirstOrDefault(p =>
-            p.Name == name && p.FromVersion == fromVer && p.ToVersion == toVer);
+        var existing = Releases.FirstOrDefault(r =>
+            r.AppName == record.AppName && r.FromVersion == record.FromVersion && r.ToVersion == record.ToVersion);
         if (existing != null)
-            RecentProjects.Remove(existing);
+            Releases.Remove(existing);
 
-        RecentProjects.Insert(0, new RecentProject
-        {
-            Name = name,
-            FromVersion = fromVer,
-            ToVersion = toVer,
-            OldDir = oldDir,
-            NewDir = newDir,
-            OutputPath = output,
-            LastUsed = DateTime.Now
-        });
+        Releases.Insert(0, record);
 
-        while (RecentProjects.Count > 10)
-            RecentProjects.RemoveAt(RecentProjects.Count - 1);
+        while (Releases.Count > 50)
+            Releases.RemoveAt(Releases.Count - 1);
 
-        HasRecentProjects = RecentProjects.Count > 0;
-        SaveRecent();
+        UpdateStats();
+        SaveHistory();
     }
 
-    private void ClearRecent()
+    private void ClearHistory()
     {
-        RecentProjects.Clear();
-        HasRecentProjects = false;
-        SaveRecent();
+        Releases.Clear();
+        UpdateStats();
+        SaveHistory();
     }
 
-    private void LoadRecent()
+    private void OpenZip(ReleaseRecord r)
+    {
+        if (File.Exists(r.ZipPath))
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = r.ZipPath,
+                UseShellExecute = true
+            });
+    }
+
+    private void UpdateStats()
+    {
+        TotalReleases = Releases.Count;
+        TotalSize = Releases.Where(r => r.FileSize > 0)
+            .Sum(r => r.FileSize) switch
+        {
+            < 1024 => "0 B",
+            < 1024 * 1024 => $"{Releases.Where(r => r.FileSize > 0).Sum(r => r.FileSize) / 1024.0:F0} KB",
+            _ => $"{Releases.Where(r => r.FileSize > 0).Sum(r => r.FileSize) / (1024.0 * 1024):F1} MB"
+        };
+        CloudCount = Releases.Count(r => r.IsRegisteredInCloud);
+        HasReleases = Releases.Count > 0;
+    }
+
+    private void LoadHistory()
     {
         try
         {
-            var dir = Path.GetDirectoryName(RecentFile);
+            var dir = Path.GetDirectoryName(HistoryFile);
             if (dir != null && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            if (File.Exists(RecentFile))
+            if (File.Exists(HistoryFile))
             {
-                var json = File.ReadAllText(RecentFile);
-                var items = JsonSerializer.Deserialize<List<RecentProject>>(json);
+                var json = File.ReadAllText(HistoryFile);
+                var items = JsonSerializer.Deserialize<List<ReleaseRecord>>(json);
                 if (items != null)
                 {
-                    RecentProjects.Clear();
-                    foreach (var item in items.OrderByDescending(p => p.LastUsed).Take(10))
-                        RecentProjects.Add(item);
+                    Releases.Clear();
+                    foreach (var item in items.OrderByDescending(r => r.CreatedAt))
+                        Releases.Add(item);
                 }
             }
         }
-        catch
-        {
-            // ignore
-        }
-        HasRecentProjects = RecentProjects.Count > 0;
+        catch { }
+
+        UpdateStats();
     }
 
-    private void SaveRecent()
+    private void SaveHistory()
     {
         try
         {
-            var json = JsonSerializer.Serialize(RecentProjects.ToList());
-            var dir = Path.GetDirectoryName(RecentFile);
+            var json = JsonSerializer.Serialize(Releases.ToList());
+            var dir = Path.GetDirectoryName(HistoryFile);
             if (dir != null && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
-            File.WriteAllText(RecentFile, json);
+            File.WriteAllText(HistoryFile, json);
         }
-        catch
-        {
-            // ignore
-        }
+        catch { }
     }
 }

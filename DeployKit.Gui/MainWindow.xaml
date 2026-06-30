@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:DeployKit.Gui.ViewModels"
         xmlns:conv="clr-namespace:DeployKit.Gui.Converters"
-        Title="DeployKit" Height="700" Width="1100"
+        xmlns:helpers="clr-namespace:DeployKit.Gui.Helpers"
+        Title="DeployKit - منشئ التحديثات" Height="720" Width="1100"
         WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable, Segoe UI" FontSize="14"
         Background="{DynamicResource ContentBg}">
@@ -43,8 +44,8 @@
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource Primary}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Padding" Value="24,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="20,9"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
@@ -70,20 +71,23 @@
         <Style x:Key="SecondaryButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,9"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryLight}"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource Primary}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -91,7 +95,11 @@
             </Setter>
         </Style>
 
-        <Style x:Key="Card" TargetType="Border">
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="{DynamicResource Success}"/>
+        </Style>
+
+        <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource CardBg}"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="20"/>
@@ -135,22 +143,28 @@
             </Setter>
         </Style>
 
-        <Style x:Key="CardButton" TargetType="Button">
-            <Setter Property="Background" Value="{DynamicResource CardBg}"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="BorderThickness" Value="0"/>
+        <Style TargetType="PasswordBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource InputBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Border" Background="{TemplateBinding Background}"
-                                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
-                                CornerRadius="10" Padding="20">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryLight}"/>
-                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource Primary}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource InputFocusBorder}"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource InputFocusBorder}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -161,18 +175,15 @@
 
     <Window.Style>
         <Style TargetType="Window">
-            <Setter Property="Title" Value="DeployKit"/>
+            <Setter Property="Title" Value="DeployKit - منشئ التحديثات"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding SelectedNavIndex}" Value="0">
-                    <Setter Property="Title" Value="DeployKit - الرئيسية"/>
+                    <Setter Property="Title" Value="DeployKit - الإصدارات"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding SelectedNavIndex}" Value="1">
-                    <Setter Property="Title" Value="DeployKit - بناء تحديث"/>
+                    <Setter Property="Title" Value="DeployKit - إصدار جديد"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
-                    <Setter Property="Title" Value="DeployKit - تطبيق تحديث"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
                     <Setter Property="Title" Value="DeployKit - الإعدادات"/>
                 </DataTrigger>
             </Style.Triggers>
@@ -186,8 +197,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- ========== SIDEBAR ========== -->
-        <Border Grid.Column="0" Background="{StaticResource SidebarBg}"
-                CornerRadius="0">
+        <Border Grid.Column="0" Background="{StaticResource SidebarBg}" CornerRadius="0">
             <Grid Margin="0,8,0,12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -195,17 +205,13 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Logo -->
                 <TextBlock Grid.Row="0" Text="DK" FontSize="22" FontWeight="800"
-                           Foreground="White" HorizontalAlignment="Center"
-                           Margin="0,12,0,8"/>
+                           Foreground="White" HorizontalAlignment="Center" Margin="0,12,0,8"/>
 
-                <!-- Nav buttons -->
                 <StackPanel Grid.Row="1">
                     <Button Style="{StaticResource SidebarButton}" Command="{Binding ShowHomeCommand}">
                         <Grid>
-                            <Border Width="3" Height="20" CornerRadius="1.5"
-                                    HorizontalAlignment="Left" Margin="0,0,0,0">
+                            <Border Width="3" Height="20" CornerRadius="1.5" HorizontalAlignment="Left">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="Background" Value="Transparent"/>
@@ -219,8 +225,7 @@
                                     </Style>
                                 </Border.Style>
                             </Border>
-                            <TextBlock Text="🏠" FontSize="20" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center">
+                            <TextBlock Text="📋" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource SidebarText}"/>
@@ -251,45 +256,12 @@
                                     </Style>
                                 </Border.Style>
                             </Border>
-                            <TextBlock Text="🔨" FontSize="20" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center">
+                            <TextBlock Text="🚀" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource SidebarText}"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding SelectedNavIndex}" Value="1">
-                                                <Setter Property="Foreground" Value="{StaticResource SidebarTextSelected}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Grid>
-                    </Button>
-
-                    <Button Style="{StaticResource SidebarButton}" Command="{Binding ShowApplyCommand}">
-                        <Grid>
-                            <Border Width="3" Height="20" CornerRadius="1.5">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
-                                                <Setter Property="Background" Value="{StaticResource SidebarAccent}"/>
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                            </Border>
-                            <TextBlock Text="📦" FontSize="20" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource SidebarText}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
                                                 <Setter Property="Foreground" Value="{StaticResource SidebarTextSelected}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -307,7 +279,7 @@
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
+                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
                                                 <Setter Property="Background" Value="{StaticResource SidebarAccent}"/>
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
@@ -315,14 +287,13 @@
                                     </Style>
                                 </Border.Style>
                             </Border>
-                            <TextBlock Text="⚙️" FontSize="20" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center">
+                            <TextBlock Text="⚙️" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource SidebarText}"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
-                                                <Setter Property="Foreground" Value="{StaticResource SidebarTextSelected}"/>
+                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
+                                                    <Setter Property="Foreground" Value="{StaticResource SidebarTextSelected}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -332,7 +303,6 @@
                     </Button>
                 </StackPanel>
 
-                <!-- Bottom -->
                 <StackPanel Grid.Row="2">
                     <Border Height="1" Background="{StaticResource SidebarDivider}" Margin="8,0,8,8"/>
                     <Button Style="{StaticResource SidebarButton}" Height="40"
@@ -362,15 +332,12 @@
                            Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Text" Value="الرئيسية"/>
+                            <Setter Property="Text" Value="الإصدارات"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SelectedNavIndex}" Value="1">
-                                    <Setter Property="Text" Value="بناء تحديث"/>
+                                    <Setter Property="Text" Value="إصدار جديد"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
-                                    <Setter Property="Text" Value="تطبيق تحديث"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
                                     <Setter Property="Text" Value="الإعدادات"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -382,133 +349,142 @@
             <!-- Content area -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                           Background="{DynamicResource ContentBg}"
-                          Padding="24"
-                          AllowDrop="True"
-                          DragOver="Content_DragOver"
-                          Drop="Content_Drop">
+                          Padding="24">
                 <ContentControl Content="{Binding CurrentView}">
                     <ContentControl.Resources>
-                        <!-- ===== HOME PAGE ===== -->
+                        <!-- ===== HOME / RELEASES PAGE ===== -->
                         <DataTemplate DataType="{x:Type vm:HomeViewModel}">
                             <StackPanel>
-                                <TextBlock Text="مرحباً بك في DeployKit" FontSize="28" FontWeight="700"
+                                <TextBlock Text="الإصدارات" FontSize="28" FontWeight="700"
                                            Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="أداة إنشاء وتطبيق حزم التحديث التفاضلي (Delta Updates)"
-                                           FontSize="15" Foreground="{DynamicResource TextSecondary}"
-                                           Margin="0,6,0,28"/>
+                                <TextBlock Text="سجل الإصدارات والتحديثات التي أنشأتها"
+                                           FontSize="14" Foreground="{DynamicResource TextSecondary}"
+                                           Margin="0,4,0,24"/>
 
-                                <Grid>
+                                <!-- Stats -->
+                                <Grid Margin="0,0,0,20">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-
-                                    <Button Grid.Column="0" Style="{StaticResource CardButton}"
-                                            Command="{Binding ShowBuildCommand}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Border Width="56" Height="56" CornerRadius="14"
-                                                    Background="{DynamicResource PrimaryLight}"
-                                                    HorizontalAlignment="Center">
-                                                <TextBlock Text="🔨" FontSize="28"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Text="بناء تحديث" FontSize="17" FontWeight="600"
-                                                       Foreground="{DynamicResource TextPrimary}"
-                                                       HorizontalAlignment="Center" Margin="0,14,0,4"/>
-                                            <TextBlock Text="قارن إصدارين وأنشئ حزمة .zip"
-                                                       FontSize="13" Foreground="{DynamicResource TextSecondary}"
-                                                       HorizontalAlignment="Center"/>
+                                    <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="16">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding TotalReleases}" FontSize="28" FontWeight="700"
+                                                       Foreground="{DynamicResource Primary}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="إصدار" FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                         </StackPanel>
-                                    </Button>
-
-                                    <Button Grid.Column="2" Style="{StaticResource CardButton}"
-                                            Command="{Binding ShowApplyCommand}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Border Width="56" Height="56" CornerRadius="14"
-                                                    Background="{DynamicResource InfoLight}"
-                                                    HorizontalAlignment="Center">
-                                                <TextBlock Text="📦" FontSize="28"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Text="تطبيق تحديث" FontSize="17" FontWeight="600"
-                                                       Foreground="{DynamicResource TextPrimary}"
-                                                       HorizontalAlignment="Center" Margin="0,14,0,4"/>
-                                            <TextBlock Text="طبق حزمة تحديث على مجلد التثبيت"
-                                                       FontSize="13" Foreground="{DynamicResource TextSecondary}"
-                                                       HorizontalAlignment="Center"/>
+                                    </Border>
+                                    <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="16">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding TotalSize}" FontSize="28" FontWeight="700"
+                                                       Foreground="{DynamicResource Success}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="الحجم الإجمالي" FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                         </StackPanel>
-                                    </Button>
+                                    </Border>
+                                    <Border Grid.Column="4" Style="{StaticResource CardStyle}" Padding="16">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding CloudCount}" FontSize="28" FontWeight="700"
+                                                       Foreground="{DynamicResource Warning}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="في السحابة" FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
 
-                                <StackPanel Margin="0,32,0,0"
-                                            Visibility="{Binding HasRecentProjects, Converter={StaticResource BoolToVis}}">
-                                    <Grid>
+                                <Button Content="🚀  إنشاء إصدار جديد"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Command="{Binding ShowBuildCommand}"
+                                        HorizontalAlignment="Center" Margin="0,0,0,24"/>
+
+                                <!-- Releases list -->
+                                <StackPanel Visibility="{Binding HasReleases, Converter={StaticResource BoolToVis}}">
+                                    <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="أحدث المشاريع" FontSize="16" FontWeight="600"
-                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                        <TextBlock Text="الإصدارات السابقة" FontSize="15" FontWeight="600"
+                                                   Foreground="{DynamicResource TextPrimary}"
+                                                   VerticalAlignment="Center"/>
                                         <Button Grid.Column="1" Content="مسح الكل"
-                                                Command="{Binding ClearRecentCommand}"
-                                                FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                                Background="Transparent" BorderThickness="0"
-                                                Cursor="Hand"/>
+                                                Command="{Binding ClearHistoryCommand}"
+                                                FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                                Background="Transparent" BorderThickness="0" Cursor="Hand"/>
                                     </Grid>
 
-                                    <ItemsControl ItemsSource="{Binding RecentProjects}" Margin="0,12,0,0">
+                                    <ItemsControl ItemsSource="{Binding Releases}">
                                         <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Style="{StaticResource Card}" Margin="0,0,0,8" Padding="16">
+                                            <DataTemplate DataType="{x:Type helpers:ReleaseRecord}">
+                                                <Border Style="{StaticResource CardStyle}"
+                                                        Margin="0,0,0,8" Padding="16"
+                                                        Cursor="Hand"
+                                                        MouseLeftButtonUp="ReleaseItem_Click">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="8"
-                                                                Background="{DynamicResource PrimaryLight}"
-                                                                Margin="0,0,12,0">
-                                                            <TextBlock Text="{Binding Name, StringFormat={}{0:0}}" FontSize="16"
-                                                                       Foreground="{DynamicResource Primary}"
-                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                        <StackPanel Grid.Column="1">
-                                                            <TextBlock Text="{Binding Name}" FontWeight="600"
-                                                                       Foreground="{DynamicResource TextPrimary}"/>
-                                                            <TextBlock FontSize="12" Margin="0,2,0,0"
-                                                                       Foreground="{DynamicResource TextSecondary}">
+                                                        <StackPanel>
+                                                            <TextBlock FontWeight="600" Foreground="{DynamicResource TextPrimary}">
+                                                                <Run Text="{Binding AppName}"/>
+                                                                <Run Text="v"/>
                                                                 <Run Text="{Binding FromVersion}"/>
-                                                                <Run Text=" → "/>
+                                                                <Run Text="→"/>
+                                                                <Run Text="v"/>
                                                                 <Run Text="{Binding ToVersion}"/>
                                                             </TextBlock>
+                                                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                                       Margin="0,2,0,0"
+                                                                       Text="{Binding CreatedAt}"/>
                                                         </StackPanel>
-                                                        <TextBlock Grid.Column="2" FontSize="12"
-                                                                   Foreground="{DynamicResource TextMuted}"
-                                                                   VerticalAlignment="Center">
-                                                            <Run Text="{Binding LastUsed, StringFormat={}{0:HH:mm}}"/>
-                                                        </TextBlock>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <TextBlock Text="☁️" FontSize="14" Margin="0,0,4,0"
+                                                                       Visibility="{Binding IsRegisteredInCloud, Converter={StaticResource BoolToVis}}"/>
+                                                            <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}">
+                                                            <Run Text="v"/><Run Text="{Binding ToVersion}"/></TextBlock>
+                                                        </StackPanel>
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
+
+                                <Border Style="{StaticResource CardStyle}" Padding="24"
+                                        Visibility="{Binding HasReleases, Converter={StaticResource BoolInvert}}">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="📦" FontSize="48" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="لا توجد إصدارات بعد" FontSize="16"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   HorizontalAlignment="Center" Margin="0,12,0,4"/>
+                                        <TextBlock Text="أنشئ أول إصدار لتطبيقك الآن!"
+                                                   FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </DataTemplate>
 
-                        <!-- ===== BUILD PAGE ===== -->
+                        <!-- ===== BUILD / NEW RELEASE PAGE ===== -->
                         <DataTemplate DataType="{x:Type vm:BuildViewModel}">
                             <StackPanel>
-                                <TextBlock Text="بناء حزمة تحديث" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="قارن بين مجلدين وأنشئ حزمة .zip تحتوي على التغييرات فقط"
+                                <TextBlock Text="إنشاء إصدار جديد" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="قارن مجلدين، أنشئ حزمة تحديث، وارفعها للسحابة"
                                            FontSize="13" Foreground="{DynamicResource TextSecondary}"
                                            Margin="0,0,0,20"/>
 
-                                <Border Style="{StaticResource Card}" Padding="24">
+                                <!-- App Info -->
+                                <Border Style="{StaticResource CardStyle}" Padding="24">
                                     <Grid>
                                         <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
@@ -516,7 +492,7 @@
                                         </Grid.RowDefinitions>
 
                                         <StackPanel Grid.Row="0">
-                                            <TextBlock Text="المجلد القديم (Source)" FontWeight="600"
+                                            <TextBlock Text="المجلد القديم (الإصدار الحالي)" FontWeight="600"
                                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -533,8 +509,8 @@
                                             </Grid>
                                         </StackPanel>
 
-                                        <StackPanel Grid.Row="1" Margin="0,16,0,0">
-                                            <TextBlock Text="المجلد الجديد (Target)" FontWeight="600"
+                                        <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                                            <TextBlock Text="المجلد الجديد (الإصدار الجديد)" FontWeight="600"
                                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -555,10 +531,11 @@
                                                 Style="{StaticResource PrimaryButton}"
                                                 Command="{Binding CompareCommand}"
                                                 IsEnabled="{Binding IsComparing, Converter={StaticResource BoolInvert}}"
-                                                Margin="0,20,0,0" HorizontalAlignment="Center"/>
+                                                Margin="0,16,0,0" HorizontalAlignment="Center"/>
 
-                                        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="16"
-                                                Margin="0,16,0,0"
+                                        <!-- Compare progress -->
+                                        <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="16"
+                                                Margin="0,12,0,0"
                                                 Visibility="{Binding IsComparing, Converter={StaticResource BoolToVis}}">
                                             <StackPanel>
                                                 <ProgressBar IsIndeterminate="True" Height="4"
@@ -577,8 +554,9 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Style="{StaticResource Card}" Padding="20"
-                                        Margin="0,16,0,0"
+                                <!-- Results -->
+                                <Border Style="{StaticResource CardStyle}" Padding="20"
+                                        Margin="0,14,0,0"
                                         Visibility="{Binding HasResult, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
                                         <Grid Margin="0,0,0,14">
@@ -593,49 +571,22 @@
                                                        VerticalAlignment="Center"/>
                                         </Grid>
 
-                                        <Grid Margin="0,0,0,16">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                                                <TextBlock Text="➕" FontSize="28" FontWeight="700"
-                                                           Foreground="{DynamicResource AddedColor}" HorizontalAlignment="Center"/>
-                                                <TextBlock Text="جديد" FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                                                <TextBlock Text="📝" FontSize="28" FontWeight="700"
-                                                           Foreground="{DynamicResource ModifiedColor}" HorizontalAlignment="Center"/>
-                                                <TextBlock Text="معدل" FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                                <TextBlock Text="🗑️" FontSize="28" FontWeight="700"
-                                                           Foreground="{DynamicResource DeletedColor}" HorizontalAlignment="Center"/>
-                                                <TextBlock Text="محذوف" FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <ItemsControl ItemsSource="{Binding Changes}" MaxHeight="200">
+                                        <ItemsControl ItemsSource="{Binding Changes}" MaxHeight="180">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Padding="8,4" Margin="0,2" CornerRadius="6" Background="Transparent">
+                                                    <Border Padding="8,3" Margin="0,1" CornerRadius="4" Background="Transparent">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="50"/>
                                                                 <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="70"/>
                                                             </Grid.ColumnDefinitions>
                                                             <TextBlock Grid.Column="0" Text="{Binding Type}"
-                                                                       FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                                                       Margin="0,0,8,0"/>
+                                                                       FontSize="12" Foreground="{DynamicResource TextMuted}"/>
                                                             <TextBlock Grid.Column="1" Text="{Binding Path}"
-                                                                       FontSize="13" Foreground="{Binding Color}"/>
+                                                                       FontSize="12" Foreground="{Binding Color}"/>
                                                             <TextBlock Grid.Column="2" Text="{Binding Size}"
-                                                                       FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                                                       FontSize="11" Foreground="{DynamicResource TextMuted}"
                                                                        HorizontalAlignment="Right"/>
                                                         </Grid>
                                                     </Border>
@@ -643,16 +594,10 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
 
-                                        <Separator Margin="0,14"/>
+                                        <Separator Margin="0,12"/>
 
-                                        <Border Background="{DynamicResource SuccessLight}" CornerRadius="8" Padding="12"
-                                                Margin="0,0,0,14"
-                                                Visibility="{Binding SavingsInfo, Converter={StaticResource StringNotEmpty}}">
-                                            <TextBlock Text="{Binding SavingsInfo}" FontSize="13"
-                                                       Foreground="{DynamicResource Success}"/>
-                                        </Border>
-
-                                        <Grid Margin="0,0,0,14">
+                                        <!-- Version + Release Notes -->
+                                        <Grid Margin="0,0,0,12">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
@@ -660,20 +605,34 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0" HorizontalAlignment="Right" Margin="0,0,12,0">
                                                 <TextBlock Text="الإصدار القديم" FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
-                                                <TextBox Text="{Binding SourceVersion}" Width="90"
-                                                         HorizontalAlignment="Right"/>
+                                                <TextBox Text="{Binding SourceVersion}" Width="90" HorizontalAlignment="Right"/>
                                             </StackPanel>
                                             <TextBlock Grid.Column="1" Text="→" FontSize="20"
                                                        Foreground="{DynamicResource TextSecondary}"
-                                                       VerticalAlignment="Bottom" Margin="0,0,0,8"/>
+                                                       VerticalAlignment="Bottom" Margin="0,0,0,6"/>
                                             <StackPanel Grid.Column="2" HorizontalAlignment="Left" Margin="12,0,0,0">
                                                 <TextBlock Text="الإصدار الجديد" FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
                                                 <TextBox Text="{Binding TargetVersion}" Width="90"/>
                                             </StackPanel>
                                         </Grid>
 
+                                        <TextBlock Text="ملاحظات الإصدار (Release Notes)" FontSize="12"
+                                                   Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding ReleaseNotes, Mode=TwoWay}"
+                                                 AcceptsReturn="True" TextWrapping="Wrap"
+                                                 MinHeight="60" MaxHeight="120"
+                                                 FontSize="12"/>
+
+                                        <Border Background="{DynamicResource SuccessLight}" CornerRadius="8" Padding="10"
+                                                Margin="0,10,0,10"
+                                                Visibility="{Binding SavingsInfo, Converter={StaticResource StringNotEmpty}}">
+                                            <TextBlock Text="{Binding SavingsInfo}" FontSize="12"
+                                                       Foreground="{DynamicResource Success}"/>
+                                        </Border>
+
+                                        <!-- Progress bar for building -->
                                         <ProgressBar Value="{Binding Progress}" Maximum="100"
-                                                     Height="6" Margin="0,0,0,14"
+                                                     Height="6" Margin="0,0,0,10"
                                                      Background="{DynamicResource ProgressBg}" BorderThickness="0"
                                                      Visibility="{Binding IsBuilding, Converter={StaticResource BoolToVis}}">
                                             <ProgressBar.Style>
@@ -683,105 +642,57 @@
                                             </ProgressBar.Style>
                                         </ProgressBar>
 
-                                        <Button Content="💾  تصدير حزمة التحديث"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Command="{Binding BuildPackageCommand}"
-                                                IsEnabled="{Binding HasResult}"
-                                                HorizontalAlignment="Center"/>
+                                        <!-- Action buttons -->
+                                        <StackPanel HorizontalAlignment="Center" Margin="0,4,0,0">
+                                            <Button Content="💾  إنشاء حزمة التحديث"
+                                                    Style="{StaticResource PrimaryButton}"
+                                                    Command="{Binding BuildPackageCommand}"
+                                                    IsEnabled="{Binding CanBuild}"
+                                                    HorizontalAlignment="Center"/>
 
-                                        <Button Content="☁️  رفع إلى السحابة"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Command="{Binding UploadToCloudCommand}"
-                                                IsEnabled="{Binding HasResult}"
-                                                HorizontalAlignment="Center"
-                                                Margin="0,8,0,0"
-                                                Visibility="{Binding HasApiKey, Converter={StaticResource BoolToVis}}"/>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                                        Margin="0,8,0,0">
+                                                <Button Content="☁️  تسجيل في السحابة"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Command="{Binding UploadToCloudCommand}"
+                                                        IsEnabled="{Binding HasResult}"
+                                                        Margin="0,0,6,0"/>
+                                                <Button Content="🐙  رفع على GitHub"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Command="{Binding CreateGitHubReleaseCommand}"
+                                                        IsEnabled="{Binding HasResult}"/>
+                                            </StackPanel>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
-                            </StackPanel>
-                        </DataTemplate>
 
-                        <!-- ===== APPLY PAGE ===== -->
-                        <DataTemplate DataType="{x:Type vm:ApplyViewModel}">
-                            <StackPanel>
-                                <TextBlock Text="تطبيق تحديث" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="طبق حزمة تحديث .zip على مجلد التثبيت"
-                                           FontSize="13" Foreground="{DynamicResource TextSecondary}"
-                                           Margin="0,0,0,20"/>
-
-                                <Border Style="{StaticResource Card}" Padding="24">
+                                <!-- Working overlay -->
+                                <Border Style="{StaticResource CardStyle}" Padding="20"
+                                        Margin="0,14,0,0"
+                                        Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
-                                        <TextBlock Text="ملف التحديث" FontWeight="600"
-                                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBox Text="{Binding PackagePath}" IsReadOnly="True"/>
-                                            <Button Grid.Column="1" Content="📂"
-                                                    Command="{Binding SelectPackageCommand}"
-                                                    Background="{DynamicResource PrimaryLight}"
-                                                    BorderThickness="0" Width="36" Height="36"
-                                                    Margin="8,0,0,0" Cursor="Hand" FontSize="16"
-                                                    Foreground="{DynamicResource Primary}"/>
-                                        </Grid>
-
-                                        <TextBlock Text="مجلد التثبيت" FontWeight="600"
-                                                   Foreground="{DynamicResource TextPrimary}"
-                                                   Margin="0,16,0,6"/>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBox Text="{Binding TargetDir}" IsReadOnly="True"/>
-                                            <Button Grid.Column="1" Content="📂"
-                                                    Command="{Binding SelectTargetCommand}"
-                                                    Background="{DynamicResource PrimaryLight}"
-                                                    BorderThickness="0" Width="36" Height="36"
-                                                    Margin="8,0,0,0" Cursor="Hand" FontSize="16"
-                                                    Foreground="{DynamicResource Primary}"/>
-                                        </Grid>
-
-                                        <Border Background="{DynamicResource InfoLight}" CornerRadius="8" Padding="14"
-                                                Margin="0,16,0,0"
-                                                Visibility="{Binding HasPackageInfo, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="{Binding PackageInfo}" FontSize="13"
-                                                       Foreground="{DynamicResource Info}" LineHeight="22"/>
-                                        </Border>
-
-                                        <ProgressBar Value="{Binding Progress}" Maximum="100"
-                                                     Height="6" Margin="0,16,0,0"
-                                                     Background="{DynamicResource ProgressBg}" BorderThickness="0"
-                                                     Visibility="{Binding IsApplying, Converter={StaticResource BoolToVis}}">
+                                        <ProgressBar IsIndeterminate="True" Height="4"
+                                                     Background="{DynamicResource ProgressBg}" BorderThickness="0">
                                             <ProgressBar.Style>
                                                 <Style TargetType="ProgressBar">
                                                     <Setter Property="Foreground" Value="{DynamicResource ProgressFill}"/>
                                                 </Style>
                                             </ProgressBar.Style>
                                         </ProgressBar>
-
-                                        <Button Content="▶️  بدء التحديث"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Command="{Binding ApplyCommand}"
-                                                IsEnabled="{Binding HasPackageInfo}"
-                                                Margin="0,16,0,0" HorizontalAlignment="Center"/>
-
-                                        <TextBlock Text="{Binding StatusMessage}"
-                                                   FontSize="14" Margin="0,12,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource TextPrimary}"/>
-
-                                        <Border Background="{DynamicResource WarningLight}" CornerRadius="8" Padding="12"
-                                                Margin="0,12,0,0"
-                                                Visibility="{Binding BackupPath, Converter={StaticResource StringNotEmpty}}">
-                                            <TextBlock FontSize="12" Foreground="{DynamicResource Warning}">
-                                                <Run Text="📂  النسخة الاحتياطية في:"/>
-                                                <Run Text="{Binding BackupPath}"/>
-                                            </TextBlock>
-                                        </Border>
+                                        <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   HorizontalAlignment="Center" Margin="0,8,0,0"/>
                                     </StackPanel>
+                                </Border>
+
+                                <Border Padding="14" Margin="0,10,0,0"
+                                        Background="{DynamicResource CardBg}"
+                                        CornerRadius="8"
+                                        BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                                        Visibility="{Binding StatusMessage, Converter={StaticResource StringNotEmpty}}">
+                                    <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               TextWrapping="Wrap"/>
                                 </Border>
                             </StackPanel>
                         </DataTemplate>
@@ -789,13 +700,17 @@
                         <!-- ===== SETTINGS PAGE ===== -->
                         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                             <StackPanel>
-                                <TextBlock Text="الإعدادات السحابية" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="سجل تطبيقك واحصل على API Key لربطه مع السحابة"
+                                <TextBlock Text="الإعدادات" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="إعدادات السحابة و GitHub"
                                            FontSize="13" Foreground="{DynamicResource TextSecondary}"
                                            Margin="0,0,0,20"/>
 
-                                <Border Style="{StaticResource Card}" Padding="24">
+                                <!-- Cloud settings -->
+                                <Border Style="{StaticResource CardStyle}" Padding="24">
                                     <StackPanel>
+                                        <TextBlock Text="☁️  السحابة (DeployKit API)" FontSize="15" FontWeight="600"
+                                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,14"/>
+
                                         <TextBlock Text="اسم التطبيق" FontWeight="600"
                                                    Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
                                         <Grid>
@@ -803,8 +718,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Text="{Binding AppName, Mode=TwoWay}"
-                                                     Margin="0,0,8,0"/>
+                                            <TextBox Text="{Binding AppName, Mode=TwoWay}" Margin="0,0,8,0"/>
                                             <Button Grid.Column="1" Content="🆕  تسجيل"
                                                     Style="{StaticResource PrimaryButton}"
                                                     Command="{Binding RegisterCommand}"/>
@@ -812,13 +726,13 @@
 
                                         <TextBlock Text="رابط السحابة" FontWeight="600"
                                                    Foreground="{DynamicResource TextPrimary}"
-                                                   Margin="0,16,0,6"/>
+                                                   Margin="0,14,0,6"/>
                                         <TextBox Text="{Binding CloudUrl, Mode=TwoWay}"/>
 
                                         <Border Background="{DynamicResource InfoLight}" CornerRadius="8" Padding="14"
-                                                Margin="0,16,0,0">
+                                                Margin="0,14,0,0">
                                             <StackPanel>
-                                                <TextBlock Text="🔑  API Key الخاص بك" FontWeight="600"
+                                                <TextBlock Text="🔑  API Key" FontWeight="600"
                                                            Foreground="{DynamicResource Info}" Margin="0,0,0,6"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -826,8 +740,8 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBox Text="{Binding ApiKey}" IsReadOnly="True"
-                                                             FontFamily="Consolas" FontSize="13"/>
-                                                    <Button Grid.Column="1" Content="📋  نسخ"
+                                                             FontFamily="Consolas" FontSize="12"/>
+                                                    <Button Grid.Column="1" Content="📋"
                                                             Style="{StaticResource SecondaryButton}"
                                                             Command="{Binding CopyKeyCommand}"
                                                             Margin="8,0,0,0"
@@ -835,12 +749,49 @@
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
-
-                                        <TextBlock Text="{Binding StatusMessage}"
-                                                   FontSize="13" Margin="0,12,0,0"
-                                                   Foreground="{DynamicResource TextSecondary}"/>
                                     </StackPanel>
                                 </Border>
+
+                                <!-- GitHub settings -->
+                                <Border Style="{StaticResource CardStyle}" Padding="24" Margin="0,14,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="🐙  GitHub" FontSize="15" FontWeight="600"
+                                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,14"/>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="GitHub User" FontWeight="600"
+                                                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                                                <TextBox Text="{Binding GitHubUser, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="GitHub Repo" FontWeight="600"
+                                                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                                                <TextBox Text="{Binding GitHubRepo, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="GitHub Token (classic PAT with repo scope)"
+                                                   FontWeight="600"
+                                                   Foreground="{DynamicResource TextPrimary}"
+                                                   Margin="0,14,0,6"/>
+                                        <TextBox Text="{Binding GitHubToken, Mode=TwoWay}"/>
+
+                                        <Button Content="💾  حفظ الإعدادات"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Command="{Binding SaveSettingsCommand}"
+                                                HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="{Binding StatusMessage}"
+                                           FontSize="13" Margin="0,12,0,0"
+                                           Foreground="{DynamicResource TextSecondary}"/>
                             </StackPanel>
                         </DataTemplate>
                     </ContentControl.Resources>
