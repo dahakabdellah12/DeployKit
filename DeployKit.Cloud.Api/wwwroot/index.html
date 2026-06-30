@@ -146,12 +146,14 @@ function login() {
   const key = document.getElementById('adminKey').value.trim();
   if (!key) return;
   adminKey = key;
+  localStorage.setItem('dk_admin_key', key);
   document.getElementById('loginError').classList.add('hidden');
   loadApps();
 }
 
 function logout() {
   adminKey = '';
+  localStorage.removeItem('dk_admin_key');
   document.getElementById('login').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
 }
@@ -351,6 +353,11 @@ async function uploadUpdate() {
   } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }
 }
 
+const savedKey = localStorage.getItem('dk_admin_key');
+if (savedKey && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
+  adminKey = savedKey;
+  loadApps();
+}
 </script>
 </body>
 </html>
