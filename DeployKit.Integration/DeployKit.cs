@@ -34,6 +34,10 @@ public static class DeployKit
 
     private static string DetectVersion()
     {
+        var stored = GetStoredVersion();
+        if (!string.IsNullOrEmpty(stored))
+            return stored;
+
         try
         {
             var ver = Assembly.GetEntryAssembly()?.GetName().Version;
@@ -46,6 +50,21 @@ public static class DeployKit
         catch
         {
             return "1.0.0";
+        }
+    }
+
+    private static string GetStoredVersion()
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DeployKit", "current_version.txt");
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : "";
+        }
+        catch
+        {
+            return "";
         }
     }
 

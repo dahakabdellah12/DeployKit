@@ -34,11 +34,17 @@ public class BuildViewModel : BaseViewModel
     private string _outputPath = "";
     public string OutputPath { get => _outputPath; set => SetProperty(ref _outputPath, value); }
 
+    private string _downloadUrl = "";
+    public string DownloadUrl { get => _downloadUrl; set => SetProperty(ref _downloadUrl, value); }
+
     private double _progress;
     public double Progress { get => _progress; set => SetProperty(ref _progress, value); }
 
     private bool _isBuilding;
     public bool IsBuilding { get => _isBuilding; set => SetProperty(ref _isBuilding, value); }
+
+    private bool _uploadToGitHub = true;
+    public bool UploadToGitHub { get => _uploadToGitHub; set => SetProperty(ref _uploadToGitHub, value); }
 
     private bool _isMandatory;
     public bool IsMandatory { get => _isMandatory; set => SetProperty(ref _isMandatory, value); }
@@ -49,21 +55,24 @@ public class BuildViewModel : BaseViewModel
     private bool _hasApiKey;
     public bool HasApiKey { get => _hasApiKey; set => SetProperty(ref _hasApiKey, value); }
 
+    private bool _hasDownloadUrl;
+    public bool HasDownloadUrl { get => _hasDownloadUrl; set => SetProperty(ref _hasDownloadUrl, value); }
+
     private bool _canBuild;
     public bool CanBuild { get => _canBuild; set => SetProperty(ref _canBuild, value); }
 
     public RelayCommand SelectNewDirCommand { get; }
     public RelayCommandAsync BuildPackageCommand { get; }
-    public RelayCommandAsync UploadToCloudCommand { get; }
-    public RelayCommandAsync CreateGitHubReleaseCommand { get; }
+    public RelayCommand UploadToCloudCommand { get; }
+    public RelayCommand CopyDownloadUrlCommand { get; }
 
     public BuildViewModel(Action<ReleaseRecord>? onReleaseCreated = null)
     {
         _onReleaseCreated = onReleaseCreated;
         SelectNewDirCommand = new RelayCommand(_ => SelectNewDir());
         BuildPackageCommand = new RelayCommandAsync(async _ => await BuildPackageAsync());
-        UploadToCloudCommand = new RelayCommandAsync(async _ => await UploadToCloudAsync());
-        CreateGitHubReleaseCommand = new RelayCommandAsync(async _ => await CreateGitHubReleaseAsync());
+        UploadToCloudCommand = new RelayCommand(_ => _ = UploadToCloudAsync());
+        CopyDownloadUrlCommand = new RelayCommand(_ => CopyDownloadUrl());
         CheckApiKey();
     }
 
@@ -151,6 +160,8 @@ public class BuildViewModel : BaseViewModel
         IsBuilding = true;
         StatusMessage = "جاري بناء حزمة التحديث...";
         Progress = 0;
+        DownloadUrl = "";
+        HasDownloadUrl = false;
 
         try
         {
@@ -170,8 +181,13 @@ public class BuildViewModel : BaseViewModel
                 CreatedAt = DateTime.Now
             };
 
+            StatusMessage = $"✅ تم إنشاء الحزمة ({FormatSize(fileSize)})";
+
+            // Upload to GitHub if enabled
+            if (UploadToGitHub)
+                await UploadToGitHubReleaseAsync(record);
+
             _onReleaseCreated?.Invoke(record);
-            StatusMessage = $"✅ تم إنشاء الحزمة: {OutputPath} ({FormatSize(fileSize)})";
         }
         catch (Exception ex)
         {
@@ -180,6 +196,89 @@ public class BuildViewModel : BaseViewModel
         finally
         {
             IsBuilding = false;
+        }
+    }
+
+    private async Task UploadToGitHubReleaseAsync(ReleaseRecord record)
+    {
+        var data = LoadCloudSettings();
+        if (data == null || string.IsNullOrWhiteSpace(data.GitHubToken))
+        {
+            StatusMessage = "✅ تم إنشاء الحزمة ⚠️ لكن لا يوجد GitHub Token. أضفه من الإعدادات.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(data.GitHubUser) || string.IsNullOrWhiteSpace(data.GitHubRepo))
+        {
+            StatusMessage = "✅ تم إنشاء الحزمة ⚠️ لكن GitHub User/Repo غير مضبوطين.";
+            return;
+        }
+
+        IsWorking = true;
+        StatusMessage = "🐙 جاري رفع الحزمة إلى GitHub Releases...";
+
+        try
+        {
+            var tag = $"v{Version}";
+            var repo = $"{data.GitHubUser}/{data.GitHubRepo}";
+            var zipName = $"{AppName}_v{Version}.zip";
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("DeployKit");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GitHubToken);
+
+            // Create release
+            var createUrl = $"https://api.github.com/repos/{repo}/releases";
+            var createBody = JsonSerializer.Serialize(new
+            {
+                tag_name = tag,
+                name = tag,
+                body = ReleaseNotes,
+                prerelease = false
+            });
+            var createResponse = await client.PostAsync(createUrl,
+                new StringContent(createBody, Encoding.UTF8, "application/json"));
+            createResponse.EnsureSuccessStatusCode();
+            var createResult = JsonSerializer.Deserialize<JsonElement>(
+                await createResponse.Content.ReadAsStringAsync());
+
+            var uploadUrl = createResult.GetProperty("upload_url").GetString()!
+                .Replace("{?name,label}", $"?name={zipName}");
+            var releaseUrl = createResult.GetProperty("html_url").GetString()!;
+
+            // Upload ZIP
+            await using var fileStream = File.OpenRead(OutputPath);
+            using var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            var uploadResponse = await client.PostAsync(uploadUrl, fileContent);
+            uploadResponse.EnsureSuccessStatusCode();
+
+            var assetResult = JsonSerializer.Deserialize<JsonElement>(
+                await uploadResponse.Content.ReadAsStringAsync());
+            var downloadUrl = assetResult.GetProperty("browser_download_url").GetString()!;
+
+            DownloadUrl = downloadUrl;
+            HasDownloadUrl = true;
+            record.GitHubReleaseUrl = releaseUrl;
+            record.CreatedGitHubRelease = true;
+
+            // Save URL to settings for cloud upload
+            data.GitHubRawUrl = downloadUrl;
+            var savePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DeployKit", "settings.json");
+            File.WriteAllText(savePath, JsonSerializer.Serialize(data));
+
+            StatusMessage = $"🐙✅ تم الرفع! الرابط: {downloadUrl}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✅ تم إنشاء الحزمة ❌ فشل رفع GitHub: {ex.Message}";
+            DownloadUrl = "";
+            HasDownloadUrl = false;
+        }
+        finally
+        {
+            IsWorking = false;
         }
     }
 
@@ -231,59 +330,12 @@ public class BuildViewModel : BaseViewModel
         }
     }
 
-    private async Task CreateGitHubReleaseAsync()
+    private void CopyDownloadUrl()
     {
-        if (string.IsNullOrEmpty(OutputPath) || !File.Exists(OutputPath)) return;
-
-        var data = LoadCloudSettings();
-        if (data == null || string.IsNullOrWhiteSpace(data.GitHubToken))
+        if (!string.IsNullOrEmpty(DownloadUrl))
         {
-            StatusMessage = "⚠️ لا يوجد GitHub Token. أضفه من صفحة الإعدادات أولاً";
-            return;
-        }
-
-        IsWorking = true;
-        StatusMessage = "🐙 جاري إنشاء الإصدار على GitHub...";
-
-        try
-        {
-            var tag = $"v{Version}";
-            var repo = $"{data.GitHubUser}/{data.GitHubRepo}";
-            var zipName = $"{AppName}_v{Version}.zip";
-
-            var createUrl = $"https://api.github.com/repos/{repo}/releases";
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("DeployKit");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GitHubToken);
-
-            var createBody = JsonSerializer.Serialize(new { tag_name = tag, name = tag, body = ReleaseNotes, prerelease = false });
-            var createResponse = await client.PostAsync(createUrl, new StringContent(createBody, Encoding.UTF8, "application/json"));
-            createResponse.EnsureSuccessStatusCode();
-            var createResult = JsonSerializer.Deserialize<JsonElement>(await createResponse.Content.ReadAsStringAsync());
-            var uploadUrl = createResult.GetProperty("upload_url").GetString()!.Replace("{?name,label}", $"?name={zipName}");
-
-            await using var fileStream = File.OpenRead(OutputPath);
-            using var fileContent = new StreamContent(fileStream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
-            var uploadResponse = await client.PostAsync(uploadUrl, fileContent);
-            uploadResponse.EnsureSuccessStatusCode();
-
-            var releaseUrl = createResult.GetProperty("html_url").GetString()!;
-            StatusMessage = $"🐙✅ تم الرفع! {releaseUrl}";
-
-            data.GitHubRawUrl = $"https://github.com/{repo}/releases/download/{tag}/{zipName}";
-            var savePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "DeployKit", "settings.json");
-            File.WriteAllText(savePath, JsonSerializer.Serialize(data));
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"🐙❌ فشل إنشاء الإصدار على GitHub: {ex.Message}";
-        }
-        finally
-        {
-            IsWorking = false;
+            Clipboard.SetText(DownloadUrl);
+            StatusMessage = "📋 تم نسخ رابط التحميل";
         }
     }
 

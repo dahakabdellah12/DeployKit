@@ -271,7 +271,7 @@
                         </Grid>
                     </Button>
 
-                    <Button Style="{StaticResource SidebarButton}" Command="{Binding ShowSettingsCommand}">
+                    <Button Style="{StaticResource SidebarButton}" Command="{Binding ShowUploadCommand}">
                         <Grid>
                             <Border Width="3" Height="20" CornerRadius="1.5">
                                 <Border.Style>
@@ -287,12 +287,43 @@
                                     </Style>
                                 </Border.Style>
                             </Border>
-                            <TextBlock Text="⚙️" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="📤" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource SidebarText}"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
+                                                <Setter Property="Foreground" Value="{StaticResource SidebarTextSelected}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Button>
+
+                    <Button Style="{StaticResource SidebarButton}" Command="{Binding ShowSettingsCommand}">
+                        <Grid>
+                            <Border Width="3" Height="20" CornerRadius="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
+                                                <Setter Property="Background" Value="{StaticResource SidebarAccent}"/>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                            <TextBlock Text="⚙️" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource SidebarText}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
                                                     <Setter Property="Foreground" Value="{StaticResource SidebarTextSelected}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -338,6 +369,9 @@
                                     <Setter Property="Text" Value="إصدار جديد"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding SelectedNavIndex}" Value="2">
+                                    <Setter Property="Text" Value="رفع إلى GitHub"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding SelectedNavIndex}" Value="3">
                                     <Setter Property="Text" Value="الإعدادات"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -534,8 +568,12 @@
                                                      AcceptsReturn="True" TextWrapping="Wrap"
                                                      MinHeight="80" FontSize="13"/>
                                             <CheckBox IsChecked="{Binding IsMandatory}" Margin="0,10,0,0"
-                                                      Foreground="{DynamicResource TextPrimary}">
+                                                       Foreground="{DynamicResource TextPrimary}">
                                                 تحديث إجباري (Mandatory)
+                                            </CheckBox>
+                                            <CheckBox IsChecked="{Binding UploadToGitHub}" Margin="0,8,0,0"
+                                                       Foreground="{DynamicResource TextPrimary}">
+                                                🐙 رفع إلى GitHub Releases
                                             </CheckBox>
                                         </StackPanel>
 
@@ -555,25 +593,36 @@
 
                                 <!-- Action buttons -->
                                 <StackPanel HorizontalAlignment="Center" Margin="0,16,0,0">
-                                    <Button Content="💾  إنشاء حزمة التحديث"
+                                    <Button Content="🚀  بناء ورفع إلى GitHub"
                                             Style="{StaticResource PrimaryButton}"
                                             Command="{Binding BuildPackageCommand}"
                                             IsEnabled="{Binding CanBuild}"
                                             HorizontalAlignment="Center"/>
-
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
-                                                Margin="0,10,0,0">
-                                        <Button Content="☁️  تسجيل في السحابة"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Command="{Binding UploadToCloudCommand}"
-                                                IsEnabled="{Binding OutputPath, Converter={StaticResource StringNotEmpty}}"
-                                                Margin="0,0,6,0"/>
-                                        <Button Content="🐙  رفع على GitHub"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Command="{Binding CreateGitHubReleaseCommand}"
-                                                IsEnabled="{Binding OutputPath, Converter={StaticResource StringNotEmpty}}"/>
-                                    </StackPanel>
                                 </StackPanel>
+
+                                <!-- Download URL -->
+                                <Border Style="{StaticResource CardStyle}" Padding="16"
+                                        Margin="0,14,0,0"
+                                        Visibility="{Binding HasDownloadUrl, Converter={StaticResource BoolToVis}}"
+                                        Background="{DynamicResource InfoLight}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="🔗  رابط التحميل" FontWeight="600" FontSize="13"
+                                                       Foreground="{DynamicResource Info}" Margin="0,0,0,4"/>
+                                            <TextBlock Text="{Binding DownloadUrl}" FontSize="11"
+                                                       Foreground="{DynamicResource Info}" TextWrapping="Wrap"
+                                                       FontFamily="Consolas"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="📋  نسخ"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding CopyDownloadUrlCommand}"
+                                                Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
 
                                 <!-- Working overlay -->
                                 <Border Style="{StaticResource CardStyle}" Padding="20"
@@ -603,6 +652,126 @@
                                     <TextBlock Text="{Binding StatusMessage}" FontSize="13"
                                                Foreground="{DynamicResource TextPrimary}"
                                                TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </DataTemplate>
+
+                        <!-- ===== UPLOAD PAGE ===== -->
+                        <DataTemplate DataType="{x:Type vm:UploadViewModel}">
+                            <StackPanel>
+                                <TextBlock Text="رفع حزمة إلى GitHub" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="اختر ملف ZIP موجود وارفعه إلى GitHub Releases"
+                                           FontSize="13" Foreground="{DynamicResource TextSecondary}"
+                                           Margin="0,0,0,20"/>
+
+                                <!-- File picker -->
+                                <Border Style="{StaticResource CardStyle}" Padding="24">
+                                    <StackPanel>
+                                        <TextBlock Text="ملف التحديث (ZIP)" FontWeight="600"
+                                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Text="{Binding FilePath}" IsReadOnly="True"/>
+                                            <Button Grid.Column="1" Content="📂"
+                                                    Command="{Binding SelectFileCommand}"
+                                                    Background="{DynamicResource PrimaryLight}"
+                                                    BorderThickness="0" Width="36" Height="36"
+                                                    Margin="8,0,0,0" Cursor="Hand" FontSize="16"
+                                                    Foreground="{DynamicResource Primary}"/>
+                                        </Grid>
+
+                                        <Grid Margin="0,14,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="رقم الإصدار" FontWeight="600"
+                                                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                                                <TextBox Text="{Binding Version}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="اسم التطبيق" FontWeight="600"
+                                                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                                                <TextBox Text="{Binding AppName}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Margin="0,14,0,0">
+                                            <TextBlock Text="ملاحظات الإصدار (Release Notes)" FontWeight="600"
+                                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                                            <TextBox Text="{Binding ReleaseNotes, Mode=TwoWay}"
+                                                     AcceptsReturn="True" TextWrapping="Wrap"
+                                                     MinHeight="80" FontSize="13"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Upload button -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,16,0,0">
+                                    <Button Content="🐙  رفع إلى GitHub Releases"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Command="{Binding UploadCommand}"
+                                            IsEnabled="{Binding CanUpload}"
+                                            HorizontalAlignment="Center"/>
+                                </StackPanel>
+
+                                <!-- Working overlay -->
+                                <Border Style="{StaticResource CardStyle}" Padding="20"
+                                        Margin="0,14,0,0"
+                                        Visibility="{Binding IsWorking, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <ProgressBar IsIndeterminate="True" Height="4"
+                                                     Background="{DynamicResource ProgressBg}" BorderThickness="0">
+                                            <ProgressBar.Style>
+                                                <Style TargetType="ProgressBar">
+                                                    <Setter Property="Foreground" Value="{DynamicResource ProgressFill}"/>
+                                                </Style>
+                                            </ProgressBar.Style>
+                                        </ProgressBar>
+                                        <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Status -->
+                                <Border Padding="14" Margin="0,10,0,0"
+                                        Background="{DynamicResource CardBg}"
+                                        CornerRadius="8"
+                                        BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                                        Visibility="{Binding StatusMessage, Converter={StaticResource StringNotEmpty}}">
+                                    <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+
+                                <!-- Download URL -->
+                                <Border Style="{StaticResource CardStyle}" Padding="16"
+                                        Margin="0,10,0,0"
+                                        Visibility="{Binding HasDownloadUrl, Converter={StaticResource BoolToVis}}"
+                                        Background="{DynamicResource InfoLight}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="🔗  رابط التحميل" FontWeight="600" FontSize="13"
+                                                       Foreground="{DynamicResource Info}" Margin="0,0,0,4"/>
+                                            <TextBlock Text="{Binding DownloadUrl}" FontSize="11"
+                                                       Foreground="{DynamicResource Info}" TextWrapping="Wrap"
+                                                       FontFamily="Consolas"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="📋  نسخ"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding CopyDownloadUrlCommand}"
+                                                Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
                                 </Border>
                             </StackPanel>
                         </DataTemplate>
@@ -688,7 +857,16 @@
                                                    FontWeight="600"
                                                    Foreground="{DynamicResource TextPrimary}"
                                                    Margin="0,14,0,6"/>
-                                        <TextBox Text="{Binding GitHubToken, Mode=TwoWay}"/>
+                                        <TextBox Text="{Binding GitHubToken, Mode=TwoWay}"
+                                                 FontFamily="Consolas" FontSize="12"/>
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}"
+                                                   Margin="0,4,0,0" TextWrapping="Wrap">
+                                        ⚠️ هذا الحقل ضروري لرفع الملفات إلى GitHub Releases.
+                                        أنشئ Token من:
+                                        <Hyperlink NavigateUri="https://github.com/settings/tokens" RequestNavigate="Hyperlink_RequestNavigate">
+                                            github.com/settings/tokens
+                                        </Hyperlink>
+                                        (New Token → repo scope → copy والصقه هنا)</TextBlock>
 
                                         <Button Content="💾  حفظ الإعدادات"
                                                 Style="{StaticResource PrimaryButton}"

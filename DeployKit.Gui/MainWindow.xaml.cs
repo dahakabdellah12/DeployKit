@@ -34,6 +34,11 @@ public partial class MainWindow : Window
                     vm.NavigateTo(1);
                     e.Handled = true;
                     break;
+                case Key.D3:
+                case Key.NumPad3:
+                    vm.NavigateTo(2);
+                    e.Handled = true;
+                    break;
                 case Key.O:
                     HandleBrowse(vm);
                     e.Handled = true;
@@ -58,6 +63,17 @@ public partial class MainWindow : Window
             if (dialog.ShowDialog() == true)
                 vm.BuildVM.NewDir = dialog.FolderName;
         }
+    }
+
+    private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        if (e.Uri != null)
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = e.Uri.ToString(),
+                UseShellExecute = true
+            });
+        e.Handled = true;
     }
 
     private void ReleaseItem_Click(object sender, MouseButtonEventArgs e)

@@ -29,9 +29,12 @@ public class MainViewModel : BaseViewModel
 
     public HomeViewModel HomeVM { get; }
     public BuildViewModel BuildVM { get; }
+    public SettingsViewModel SettingsVM { get; }
+    public UploadViewModel UploadVM { get; }
 
     public RelayCommand ShowHomeCommand { get; }
     public RelayCommand ShowBuildCommand { get; }
+    public RelayCommand ShowUploadCommand { get; }
     public RelayCommand ShowSettingsCommand { get; }
     public RelayCommand ToggleThemeCommand { get; }
 
@@ -39,11 +42,14 @@ public class MainViewModel : BaseViewModel
     {
         HomeVM = new HomeViewModel(this);
         BuildVM = new BuildViewModel(HomeVM.AddRelease);
+        SettingsVM = new SettingsViewModel();
+        UploadVM = new UploadViewModel();
         _currentView = HomeVM;
 
         ShowHomeCommand = new RelayCommand(_ => NavigateTo(0));
         ShowBuildCommand = new RelayCommand(_ => NavigateTo(1));
-        ShowSettingsCommand = new RelayCommand(_ => NavigateTo(2));
+        ShowUploadCommand = new RelayCommand(_ => NavigateTo(2));
+        ShowSettingsCommand = new RelayCommand(_ => NavigateTo(3));
         ToggleThemeCommand = new RelayCommand(_ => ToggleTheme());
 
         ThemeService.Instance.ThemeChanged += OnThemeChanged;
@@ -56,6 +62,8 @@ public class MainViewModel : BaseViewModel
         {
             0 => HomeVM,
             1 => BuildVM,
+            2 => UploadVM,
+            3 => SettingsVM,
             _ => HomeVM
         };
     }

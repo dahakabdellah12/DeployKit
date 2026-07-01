@@ -42,6 +42,10 @@ public partial class UpdateWindow : Window
             SubtitleText.Text = appName;
 
             _cts = new CancellationTokenSource();
+
+            if (!string.IsNullOrEmpty(version))
+                SaveCurrentVersion(version);
+
             await RunUpdateAsync(downloadUrl, targetDir, appName, prev, hostPid);
         }
         catch (Exception ex)
@@ -230,6 +234,20 @@ public partial class UpdateWindow : Window
         < 1024 * 1024 => $"{bytes / 1024.0:F0} KB",
         _ => $"{bytes / (1024.0 * 1024):F1} MB"
     };
+
+    private static void SaveCurrentVersion(string version)
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DeployKit", "current_version.txt");
+            var dir = Path.GetDirectoryName(path)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(path, version);
+        }
+        catch { }
+    }
 
     private static void SaveRollbackInfo(string backupPath, string targetDir, string? prevVersion)
     {
