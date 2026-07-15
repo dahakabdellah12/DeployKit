@@ -57,16 +57,19 @@
 <body>
 <div id="login" class="login-box container">
   <h1>DeployKit Dashboard</h1>
-  <div id="setupForm" class="card hidden">
+
+  <div id="setupForm" class="card">
     <h2>إنشاء حساب المسؤول</h2>
-    <p style="font-size:13px;color:#a1a1aa">هذه أول مرة — قم بإنشاء كلمة مرور المسؤول</p>
+    <p style="font-size:13px;color:#a1a1aa">المسؤول الأول (مرة واحدة فقط)</p>
     <input type="text" id="setupUser" placeholder="اسم المستخدم" autocomplete="off" onkeydown="if(event.key==='Enter') setup()">
     <input type="password" id="setupPass" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter') setup()">
     <button class="btn btn-primary" onclick="setup()" style="width:100%">إنشاء الحساب</button>
     <div id="setupError" class="error hidden"></div>
   </div>
-  <div id="loginForm" class="card">
+
+  <div id="loginForm" class="card" style="margin-top:16px">
     <h2>تسجيل الدخول</h2>
+    <p style="font-size:13px;color:#a1a1aa">إذا كان لديك حساب مسؤول مسبقًا</p>
     <input type="text" id="loginUser" placeholder="اسم المستخدم" autocomplete="username" onkeydown="if(event.key==='Enter') login()">
     <input type="password" id="loginPass" placeholder="كلمة المرور" autocomplete="current-password" onkeydown="if(event.key==='Enter') login()">
     <button class="btn btn-primary" onclick="login()" style="width:100%">دخول</button>
@@ -223,25 +226,6 @@ async function api(method, path, body, extraHeaders) {
 }
 
 async function init() {
-  try {
-    const status = await fetch(baseUrl + '/v1/admin/status').then(r => r.json());
-    if (!status.hasAdmin) {
-      token = '';
-      localStorage.removeItem('dk_token');
-      document.getElementById('loginForm').classList.add('hidden');
-      document.getElementById('setupForm').classList.remove('hidden');
-      document.getElementById('login').classList.remove('hidden');
-      document.getElementById('app').classList.add('hidden');
-      return;
-    } else {
-      document.getElementById('setupForm').classList.add('hidden');
-      document.getElementById('loginForm').classList.remove('hidden');
-    }
-  } catch(e) {
-    document.getElementById('loginError').textContent = 'فشل الاتصال بالخادم';
-    document.getElementById('loginError').classList.remove('hidden');
-  }
-
   if (token) {
     try {
       const apps = await api('GET', '/v1/admin/apps');
@@ -260,15 +244,6 @@ function showLogin() {
   localStorage.removeItem('dk_token');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login').classList.remove('hidden');
-  document.getElementById('setupForm').classList.add('hidden');
-  document.getElementById('loginForm').classList.remove('hidden');
-  // Check if admin exists to toggle form
-  fetch(baseUrl + '/v1/admin/status').then(r => r.json()).then(s => {
-    if (!s.hasAdmin) {
-      document.getElementById('loginForm').classList.add('hidden');
-      document.getElementById('setupForm').classList.remove('hidden');
-    }
-  }).catch(() => {});
 }
 
 async function setup() {
