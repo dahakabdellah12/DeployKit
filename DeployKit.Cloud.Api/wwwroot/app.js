@@ -110,33 +110,6 @@ async function login() {
   } catch(e) { error.textContent = '❌ ' + e.message; error.classList.remove('hidden'); }
 }
 
-// ---------- Register user (from dashboard) ----------
-function showAddUserModal() {
-  document.getElementById('addUserModal').classList.remove('hidden');
-  document.getElementById('addUserStatus').classList.add('hidden');
-  document.getElementById('addUserUser').value = '';
-  document.getElementById('addUserPass').value = '';
-  document.getElementById('addUserUser').focus();
-}
-function hideAddUserModal() { document.getElementById('addUserModal').classList.add('hidden'); }
-
-async function addUser() {
-  const username = document.getElementById('addUserUser').value.trim();
-  const password = document.getElementById('addUserPass').value.trim();
-  const status = document.getElementById('addUserStatus');
-  if (!username || !password) { status.textContent = 'الرجاء ملء جميع الحقول'; status.style.color = '#f87171'; status.classList.remove('hidden'); return; }
-  try {
-    const res = await api('POST', '/v1/admin/users', { username, password });
-    if (!res) return;
-    status.textContent = '✅ تم إنشاء المستخدم بنجاح!';
-    status.style.color = '#86efac';
-    status.classList.remove('hidden');
-    document.getElementById('addUserUser').value = '';
-    document.getElementById('addUserPass').value = '';
-    setTimeout(hideAddUserModal, 1500);
-  } catch(e) { status.textContent = '❌ ' + e.message; status.style.color = '#f87171'; status.classList.remove('hidden'); }
-}
-
 // ---------- Apps list ----------
 async function loadApps() {
   try {
@@ -385,7 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('showRegisterBtn').addEventListener('click', showRegisterModal);
   document.getElementById('showUploadBtn').addEventListener('click', showUploadModal);
-  document.getElementById('showAddUserBtn').addEventListener('click', showAddUserModal);
   document.getElementById('logoutBtn').addEventListener('click', logout);
 
   document.getElementById('backBtn').addEventListener('click', hideDetail);
@@ -399,12 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('hideEditBtn').addEventListener('click', hideEditModal);
   document.getElementById('saveEditBtn').addEventListener('click', saveEditPackage);
-
-  // Add user modal
-  document.getElementById('addUserUser').addEventListener('keydown', e => { if (e.key === 'Enter') addUser(); });
-  document.getElementById('addUserPass').addEventListener('keydown', e => { if (e.key === 'Enter') addUser(); });
-  document.getElementById('hideAddUserBtn').addEventListener('click', hideAddUserModal);
-  document.getElementById('addUserBtn').addEventListener('click', addUser);
 
   document.getElementById('appsTable').addEventListener('click', e => {
     const link = e.target.closest('.app-link');

@@ -42,39 +42,6 @@ public class LoginEndpoint
             }
         }).RequireRateLimiting("Login");
 
-        app.MapPost("/v1/admin/users", async (SetupRequest req, HttpRequest httpReq, AppDbContext db, ILogger<LoginEndpoint> logger) =>
-        {
-            try
-            {
-                var err = ValidateCredentials(req.Username, req.Password);
-                if (err != null) return Results.BadRequest(new { error = err });
-
-                if (await db.Users.AnyAsync(u => u.Username == req.Username))
-                    return Results.BadRequest(new { error = "Username already taken" });
-
-                var token = Guid.NewGuid().ToString("N");
-                var user = new User
-                {
-                    Username = req.Username,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-                    Token = token,
-                    TokenExpires = DateTime.UtcNow.AddDays(90)
-                };
-
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
-
-                await AuditHelper.LogAsync(db, "register", req.Username, "New user registered", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
-
-                return Results.Ok(new { token, expiresAt = user.TokenExpires });
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Registration failed");
-                return Results.Problem(detail: "Internal server error", statusCode: 500);
-            }
-        }).RequireRateLimiting("Login");
-
         app.MapPost("/v1/admin/login", async (LoginRequest req, HttpRequest httpReq, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {
             try
