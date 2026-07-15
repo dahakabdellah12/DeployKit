@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
+using DeployKit.Cloud.Api.Helpers;
 using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
@@ -65,6 +66,10 @@ public class UploadEndpoint
                 db.Packages.Add(pkg);
                 appReg.CurrentVersion = version;
                 await db.SaveChangesAsync();
+
+                await AuditHelper.LogAsync(db, "upload", admin.Username,
+                    $"App: {appReg.AppName}, Version: {version}, Mandatory: {mandatory}",
+                    req.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new
                 {

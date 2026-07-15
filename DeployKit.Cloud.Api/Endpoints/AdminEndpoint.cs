@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
+using DeployKit.Cloud.Api.Helpers;
 using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
@@ -33,6 +34,7 @@ public class AdminEndpoint
             if (user == null)
                 return Results.Json(new { error = "Invalid or expired token" }, statusCode: 401);
 
+            ctx.HttpContext.Items["AdminUser"] = user.Username;
             return await next(ctx);
         });
 
@@ -85,7 +87,7 @@ public class AdminEndpoint
             });
         });
 
-        admin.MapPost("/register", async (RegisterRequest req, AppDbContext db, ILogger<AdminEndpoint> logger) =>
+        admin.MapPost("/register", async (RegisterRequest req, HttpRequest httpReq, AppDbContext db, ILogger<AdminEndpoint> logger) =>
         {
             try
             {
@@ -100,6 +102,10 @@ public class AdminEndpoint
                 });
 
                 await db.SaveChangesAsync();
+
+                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
+                await AuditHelper.LogAsync(db, "register_app", admin, $"App: {req.AppName}, Key: {appKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+
                 return Results.Ok(new { appKey, appName = req.AppName });
             }
             catch (Exception ex)
@@ -109,7 +115,7 @@ public class AdminEndpoint
             }
         });
 
-        admin.MapPost("/apps/{key}/regenerate-key", async (string key, AppDbContext db) =>
+        admin.MapPost("/apps/{key}/regenerate-key", async (string key, HttpRequest httpReq, AppDbContext db) =>
         {
             var app = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key);
             if (app is null)
@@ -119,76 +125,123 @@ public class AdminEndpoint
             app.AppKey = newKey;
             await db.SaveChangesAsync();
 
+            var admin = httpReq.HttpContext.Items["AdminUser"] as string;
+            await AuditHelper.LogAsync(db, "regenerate_key", admin, $"App: {app.AppName}, Old: {key}, New: {newKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+
             return Results.Ok(new { appKey = newKey });
         });
 
-        admin.MapDelete("/apps/{key}", async (string key, AppDbContext db) =>
+        admin.MapDelete("/apps/{key}", async (string key, HttpRequest httpReq, AppDbContext db, ILogger<AdminEndpoint> logger) =>
         {
-            var app = await db.Apps
-                .Include(a => a.Packages)
-                .FirstOrDefaultAsync(a => a.AppKey == key);
+            try
+            {
+                var app = await db.Apps
+                    .Include(a => a.Packages)
+                    .FirstOrDefaultAsync(a => a.AppKey == key);
 
-            if (app is null)
-                return Results.NotFound(new { error = "App not found" });
+                if (app is null)
+                    return Results.NotFound(new { error = "App not found" });
 
-            db.Packages.RemoveRange(app.Packages);
-            db.Apps.Remove(app);
-            await db.SaveChangesAsync();
+                var appName = app.AppName;
+                db.Packages.RemoveRange(app.Packages);
+                db.Apps.Remove(app);
+                await db.SaveChangesAsync();
 
-            return Results.Ok(new { deleted = true });
+                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
+                await AuditHelper.LogAsync(db, "delete_app", admin, $"App: {appName}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+
+                return Results.Ok(new { deleted = true });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Delete app failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
+            }
         });
 
-        admin.MapPatch("/packages/{id:int}", async (int id, UpdatePackageRequest req, AppDbContext db) =>
+        admin.MapPatch("/packages/{id:int}", async (int id, UpdatePackageRequest req, HttpRequest httpReq, AppDbContext db, ILogger<AdminEndpoint> logger) =>
         {
-            var pkg = await db.Packages.Include(p => p.App).FirstOrDefaultAsync(p => p.Id == id);
-            if (pkg is null)
-                return Results.NotFound(new { error = "Package not found" });
-
-            if (req.Version is not null)
+            try
             {
-                if (string.IsNullOrWhiteSpace(req.Version))
-                    return Results.BadRequest(new { error = "Version cannot be empty" });
-                pkg.Version = req.Version;
-                pkg.App.CurrentVersion = req.Version;
+                var pkg = await db.Packages.Include(p => p.App).FirstOrDefaultAsync(p => p.Id == id);
+                if (pkg is null)
+                    return Results.NotFound(new { error = "Package not found" });
+
+                var changes = new System.Text.StringBuilder();
+                if (req.Version is not null)
+                {
+                    if (string.IsNullOrWhiteSpace(req.Version))
+                        return Results.BadRequest(new { error = "Version cannot be empty" });
+                    changes.Append($"Version: {pkg.Version} -> {req.Version}; ");
+                    pkg.Version = req.Version;
+                    pkg.App.CurrentVersion = req.Version;
+                }
+
+                if (req.DownloadUrl is not null)
+                {
+                    if (string.IsNullOrWhiteSpace(req.DownloadUrl))
+                        return Results.BadRequest(new { error = "Download URL cannot be empty" });
+                    changes.Append($"URL changed; ");
+                    pkg.DownloadUrl = req.DownloadUrl;
+                }
+
+                if (req.ReleaseNotes is not null)
+                {
+                    changes.Append("ReleaseNotes updated; ");
+                    pkg.ReleaseNotes = req.ReleaseNotes;
+                }
+
+                if (req.IsMandatory is not null)
+                {
+                    changes.Append($"Mandatory: {pkg.IsMandatory} -> {req.IsMandatory}; ");
+                    pkg.IsMandatory = req.IsMandatory.Value;
+                }
+
+                await db.SaveChangesAsync();
+
+                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
+                await AuditHelper.LogAsync(db, "update_package", admin, $"Package {id}, App: {pkg.App.AppName}, {changes}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+
+                return Results.Ok(new
+                {
+                    pkg.Id,
+                    pkg.Version,
+                    pkg.DownloadUrl,
+                    pkg.ReleaseNotes,
+                    pkg.IsMandatory,
+                    pkg.IsFullPackage,
+                    pkg.CreatedAt
+                });
             }
-
-            if (req.DownloadUrl is not null)
+            catch (Exception ex)
             {
-                if (string.IsNullOrWhiteSpace(req.DownloadUrl))
-                    return Results.BadRequest(new { error = "Download URL cannot be empty" });
-                pkg.DownloadUrl = req.DownloadUrl;
+                logger.LogError(ex, "Update package failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-
-            if (req.ReleaseNotes is not null)
-                pkg.ReleaseNotes = req.ReleaseNotes;
-
-            if (req.IsMandatory is not null)
-                pkg.IsMandatory = req.IsMandatory.Value;
-
-            await db.SaveChangesAsync();
-
-            return Results.Ok(new
-            {
-                pkg.Id,
-                pkg.Version,
-                pkg.DownloadUrl,
-                pkg.ReleaseNotes,
-                pkg.IsMandatory,
-                pkg.IsFullPackage,
-                pkg.CreatedAt
-            });
         });
 
-        admin.MapDelete("/packages/{id:int}", async (int id, AppDbContext db) =>
+        admin.MapDelete("/packages/{id:int}", async (int id, HttpRequest httpReq, AppDbContext db, ILogger<AdminEndpoint> logger) =>
         {
-            var pkg = await db.Packages.FindAsync(id);
-            if (pkg is null)
-                return Results.NotFound(new { error = "Package not found" });
+            try
+            {
+                var pkg = await db.Packages.Include(p => p.App).FirstOrDefaultAsync(p => p.Id == id);
+                if (pkg is null)
+                    return Results.NotFound(new { error = "Package not found" });
 
-            db.Packages.Remove(pkg);
-            await db.SaveChangesAsync();
+                var appName = pkg.App?.AppName;
+                db.Packages.Remove(pkg);
+                await db.SaveChangesAsync();
 
-            return Results.Ok(new { deleted = true });
+                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
+                await AuditHelper.LogAsync(db, "delete_package", admin, $"Package {id}, App: {appName}, Version: {pkg.Version}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+
+                return Results.Ok(new { deleted = true });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Delete package failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
+            }
         });
 
         admin.MapGet("/packages/{id:int}", async (int id, AppDbContext db) =>

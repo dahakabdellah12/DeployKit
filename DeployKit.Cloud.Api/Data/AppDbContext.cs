@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<AppRegistration> Apps => Set<AppRegistration>();
     public DbSet<UpdatePackage> Packages => Set<UpdatePackage>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -29,6 +30,11 @@ public class AppDbContext : DbContext
             e.HasOne(p => p.App)
              .WithMany(a => a.Packages)
              .HasForeignKey(p => p.AppId);
+        });
+
+        model.Entity<AuditLog>(e =>
+        {
+            e.HasIndex(a => a.CreatedAt);
         });
     }
 }

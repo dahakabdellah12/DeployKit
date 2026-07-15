@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
+using DeployKit.Cloud.Api.Helpers;
 using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
@@ -8,7 +9,7 @@ public class LoginEndpoint
 {
     public static void Map(WebApplication app)
     {
-        app.MapPost("/v1/admin/setup", async (SetupRequest req, AppDbContext db, ILogger<LoginEndpoint> logger) =>
+        app.MapPost("/v1/admin/setup", async (SetupRequest req, HttpRequest httpReq, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {
             try
             {
@@ -30,6 +31,8 @@ public class LoginEndpoint
                 db.AdminUsers.Add(user);
                 await db.SaveChangesAsync();
 
+                await AuditHelper.LogAsync(db, "setup", req.Username, "Initial admin setup", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+
                 return Results.Ok(new { token, expiresAt = user.TokenExpires });
             }
             catch (Exception ex)
@@ -39,7 +42,7 @@ public class LoginEndpoint
             }
         }).RequireRateLimiting("Login");
 
-        app.MapPost("/v1/admin/login", async (LoginRequest req, AppDbContext db, ILogger<LoginEndpoint> logger) =>
+        app.MapPost("/v1/admin/login", async (LoginRequest req, HttpRequest httpReq, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {
             try
             {
@@ -48,7 +51,10 @@ public class LoginEndpoint
 
                 var user = await db.AdminUsers.FirstOrDefaultAsync(u => u.Username == req.Username);
                 if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+                {
+                    await AuditHelper.LogAsync(db, "login_failed", req.Username, "Invalid credentials", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
                     return Results.Unauthorized();
+                }
 
                 if (user.TokenExpires < DateTime.UtcNow)
                 {
@@ -58,6 +64,8 @@ public class LoginEndpoint
 
                 user.TokenExpires = DateTime.UtcNow.AddDays(90);
                 await db.SaveChangesAsync();
+
+                await AuditHelper.LogAsync(db, "login", req.Username, "Successful login", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { token = user.Token, expiresAt = user.TokenExpires });
             }

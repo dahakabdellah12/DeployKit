@@ -68,6 +68,23 @@ var app = builder.Build();
 app.UseHsts();
 app.UseRateLimiter();
 
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers.Append("Content-Security-Policy",
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self'; " +
+        "img-src 'self' data:; " +
+        "font-src 'self'; " +
+        "form-action 'self'; " +
+        "base-uri 'self'");
+    ctx.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    ctx.Response.Headers.Append("X-Frame-Options", "DENY");
+    ctx.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    await next();
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

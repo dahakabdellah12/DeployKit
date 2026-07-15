@@ -181,6 +181,21 @@ let token = localStorage.getItem('dk_token');
 let baseUrl = window.location.origin;
 let currentAppKey = null;
 let currentPackages = [];
+let idleTimer = null;
+const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    alert('⚠️ انتهت الجلسة بسبب عدم النشاط. سجّل دخولك مرة أخرى.');
+    logout();
+  }, IDLE_TIMEOUT);
+}
+
+// Events that reset the idle timer
+['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(ev =>
+  document.addEventListener(ev, resetIdleTimer)
+);
 
 async function api(method, path, body, extraHeaders) {
   const controller = new AbortController();
@@ -228,6 +243,7 @@ async function init() {
       document.getElementById('login').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
       renderApps(apps || []);
+      resetIdleTimer();
     } catch {
       showLogin();
     }
@@ -258,6 +274,7 @@ async function setup() {
     document.getElementById('login').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     loadApps();
+    resetIdleTimer();
   } catch(e) { error.textContent = '❌ ' + e.message; error.classList.remove('hidden'); }
 }
 
@@ -278,6 +295,7 @@ async function login() {
     document.getElementById('login').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     loadApps();
+    resetIdleTimer();
   } catch(e) { error.textContent = '❌ ' + e.message; error.classList.remove('hidden'); }
 }
 
