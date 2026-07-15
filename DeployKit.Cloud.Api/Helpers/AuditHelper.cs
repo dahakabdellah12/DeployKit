@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Models;
 
@@ -11,7 +12,7 @@ public static class AuditHelper
         db.AuditLogs.Add(new AuditLog
         {
             Action = action,
-            AdminUser = adminUser,
+            AdminUser = adminUser ?? "",
             Details = details,
             IpAddress = ipAddress,
             CreatedAt = DateTime.UtcNow
@@ -19,17 +20,16 @@ public static class AuditHelper
         await db.SaveChangesAsync();
     }
 
-    public static string? GetAdminUsername(HttpContext ctx, AppDbContext db)
+    public static User? ResolveUser(HttpContext ctx, AppDbContext db)
     {
         var auth = ctx.Request.Headers.Authorization.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(auth) || !auth.StartsWith("Bearer ")) return null;
         var token = auth["Bearer ".Length..];
-        var users = db.AdminUsers.Where(u => u.TokenExpires > DateTime.UtcNow).ToList();
-        var user = users.FirstOrDefault(u =>
+        var users = db.Users.Where(u => u.TokenExpires > DateTime.UtcNow).ToList();
+        return users.FirstOrDefault(u =>
             u.Token.Length == token.Length &&
             CryptographicOperations.FixedTimeEquals(
-                System.Text.Encoding.UTF8.GetBytes(u.Token),
-                System.Text.Encoding.UTF8.GetBytes(token)));
-        return user?.Username;
+                Encoding.UTF8.GetBytes(u.Token),
+                Encoding.UTF8.GetBytes(token)));
     }
 }

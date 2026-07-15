@@ -1,0 +1,18 @@
+services:
+  deploykit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:80"
+    volumes:
+      - deploykit-data:/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - DataPath=/data
+      - ConnectionStrings__Sqlite=Data Source=/data/deploykit.db
+    restart: unless-stopped
+
+volumes:
+  deploykit-data:

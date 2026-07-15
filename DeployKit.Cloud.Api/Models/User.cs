@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DeployKit.Cloud.Api.Models;
 
-public class AdminUser
+public class User
 {
     public int Id { get; set; }
 
@@ -17,5 +17,5 @@ public class AdminUser
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public DateTime TokenExpires { get; set; } = DateTime.UtcNow.AddDays(30);
+    public DateTime TokenExpires { get; set; } = DateTime.UtcNow.AddDays(90);
 }

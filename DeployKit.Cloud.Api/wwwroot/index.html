@@ -83,7 +83,8 @@
     <div>
       <button id="showRegisterBtn" class="btn btn-primary btn-sm">➕ تسجيل تطبيق</button>
       <button id="showUploadBtn" class="btn btn-primary btn-sm">📦 رفع تحديث</button>
-      <button id="logoutBtn" class="btn btn-sm" style="color:#a1a1aa">تسجيل خروج</button>
+      <button id="showAddUserBtn" class="btn btn-sm" style="color:#a1a1aa">👤 إضافة مستخدم</button>
+      <button id="logoutBtn" class="btn btn-sm" style="color:#f87171">تسجيل خروج</button>
     </div>
   </div>
 
@@ -176,6 +177,26 @@
         <button id="saveEditBtn" class="btn btn-primary">حفظ</button>
       </div>
       <div id="editStatus" class="hidden mt-12"></div>
+    </div>
+  </div>
+
+  <div id="addUserModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>إضافة مستخدم جديد</h3>
+      <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px">كل مستخدم يرى تطبيقاته فقط</p>
+      <div class="form-group">
+        <label>اسم المستخدم</label>
+        <input id="addUserUser" placeholder="أدخل اسم المستخدم" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>كلمة المرور (8+ أحرف، حرف كبير، رقم)</label>
+        <input type="password" id="addUserPass" placeholder="كلمة المرور">
+      </div>
+      <div class="btn-row">
+        <button id="hideAddUserBtn" class="btn" style="background:#27272a;color:#e4e4e7">إلغاء</button>
+        <button id="addUserBtn" class="btn btn-primary">إنشاء</button>
+      </div>
+      <div id="addUserStatus" class="hidden mt-12"></div>
     </div>
   </div>
 

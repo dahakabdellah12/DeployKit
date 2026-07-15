@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Helpers;
@@ -16,31 +17,20 @@ public class AdminEndpoint
         var admin = app.MapGroup("/v1/admin").RequireRateLimiting("Admin");
         admin.AddEndpointFilter(async (ctx, next) =>
         {
-            var auth = ctx.HttpContext.Request.Headers.Authorization.FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(auth) || !auth.StartsWith("Bearer "))
+            var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var user = AuditHelper.ResolveUser(ctx.HttpContext, db);
+            if (user == null)
                 return Results.Json(new { error = "Unauthorized" }, statusCode: 401);
 
-            var token = auth["Bearer ".Length..];
-            var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-            var users = await db.AdminUsers
-                .Where(u => u.TokenExpires > DateTime.UtcNow)
-                .ToListAsync();
-            var user = users.FirstOrDefault(u =>
-                u.Token.Length == token.Length &&
-                CryptographicOperations.FixedTimeEquals(
-                    System.Text.Encoding.UTF8.GetBytes(u.Token),
-                    System.Text.Encoding.UTF8.GetBytes(token)));
-
-            if (user == null)
-                return Results.Json(new { error = "Invalid or expired token" }, statusCode: 401);
-
-            ctx.HttpContext.Items["AdminUser"] = user.Username;
+            ctx.HttpContext.Items["User"] = user;
             return await next(ctx);
         });
 
-        admin.MapGet("/apps", async (AppDbContext db) =>
+        admin.MapGet("/apps", async (AppDbContext db, HttpRequest httpReq) =>
         {
+            var user = (User)httpReq.HttpContext.Items["User"]!;
             var apps = await db.Apps
+                .Where(a => a.UserId == user.Id)
                 .Include(a => a.Packages)
                 .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new
@@ -57,9 +47,11 @@ public class AdminEndpoint
             return Results.Ok(apps);
         });
 
-        admin.MapGet("/apps/{key}", async (string key, AppDbContext db) =>
+        admin.MapGet("/apps/{key}", async (string key, AppDbContext db, HttpRequest httpReq) =>
         {
+            var user = (User)httpReq.HttpContext.Items["User"]!;
             var app = await db.Apps
+                .Where(a => a.UserId == user.Id)
                 .Include(a => a.Packages.OrderByDescending(p => p.CreatedAt))
                 .FirstOrDefaultAsync(a => a.AppKey == key);
 
@@ -91,6 +83,8 @@ public class AdminEndpoint
         {
             try
             {
+                var user = (User)httpReq.HttpContext.Items["User"]!;
+
                 if (string.IsNullOrWhiteSpace(req.AppName))
                     return Results.BadRequest(new { error = "App name is required" });
 
@@ -98,13 +92,13 @@ public class AdminEndpoint
                 db.Apps.Add(new AppRegistration
                 {
                     AppKey = appKey,
-                    AppName = req.AppName
+                    AppName = req.AppName,
+                    UserId = user.Id
                 });
 
                 await db.SaveChangesAsync();
 
-                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
-                await AuditHelper.LogAsync(db, "register_app", admin, $"App: {req.AppName}, Key: {appKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "register_app", user.Username, $"App: {req.AppName}, Key: {appKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { appKey, appName = req.AppName });
             }
@@ -119,7 +113,8 @@ public class AdminEndpoint
         {
             try
             {
-                var app = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key);
+                var user = (User)httpReq.HttpContext.Items["User"]!;
+                var app = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key && a.UserId == user.Id);
                 if (app is null)
                     return Results.NotFound(new { error = "App not found" });
 
@@ -127,8 +122,7 @@ public class AdminEndpoint
                 app.AppKey = newKey;
                 await db.SaveChangesAsync();
 
-                var adminUser = httpReq.HttpContext.Items["AdminUser"] as string;
-                await AuditHelper.LogAsync(db, "regenerate_key", adminUser, $"App: {app.AppName}, Old: {key}, New: {newKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "regenerate_key", user.Username, $"App: {app.AppName}, Old: {key}, New: {newKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { appKey = newKey });
             }
@@ -143,9 +137,10 @@ public class AdminEndpoint
         {
             try
             {
+                var user = (User)httpReq.HttpContext.Items["User"]!;
                 var app = await db.Apps
                     .Include(a => a.Packages)
-                    .FirstOrDefaultAsync(a => a.AppKey == key);
+                    .FirstOrDefaultAsync(a => a.AppKey == key && a.UserId == user.Id);
 
                 if (app is null)
                     return Results.NotFound(new { error = "App not found" });
@@ -155,8 +150,7 @@ public class AdminEndpoint
                 db.Apps.Remove(app);
                 await db.SaveChangesAsync();
 
-                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
-                await AuditHelper.LogAsync(db, "delete_app", admin, $"App: {appName}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "delete_app", user.Username, $"App: {appName}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { deleted = true });
             }
@@ -171,11 +165,15 @@ public class AdminEndpoint
         {
             try
             {
-                var pkg = await db.Packages.Include(p => p.App).FirstOrDefaultAsync(p => p.Id == id);
+                var user = (User)httpReq.HttpContext.Items["User"]!;
+                var pkg = await db.Packages
+                    .Include(p => p.App)
+                    .FirstOrDefaultAsync(p => p.Id == id && p.App.UserId == user.Id);
+
                 if (pkg is null)
                     return Results.NotFound(new { error = "Package not found" });
 
-                var changes = new System.Text.StringBuilder();
+                var changes = new StringBuilder();
                 if (req.Version is not null)
                 {
                     if (string.IsNullOrWhiteSpace(req.Version))
@@ -207,8 +205,7 @@ public class AdminEndpoint
 
                 await db.SaveChangesAsync();
 
-                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
-                await AuditHelper.LogAsync(db, "update_package", admin, $"Package {id}, App: {pkg.App.AppName}, {changes}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "update_package", user.Username, $"Package {id}, App: {pkg.App.AppName}, {changes}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new
                 {
@@ -232,7 +229,11 @@ public class AdminEndpoint
         {
             try
             {
-                var pkg = await db.Packages.Include(p => p.App).FirstOrDefaultAsync(p => p.Id == id);
+                var user = (User)httpReq.HttpContext.Items["User"]!;
+                var pkg = await db.Packages
+                    .Include(p => p.App)
+                    .FirstOrDefaultAsync(p => p.Id == id && p.App.UserId == user.Id);
+
                 if (pkg is null)
                     return Results.NotFound(new { error = "Package not found" });
 
@@ -240,8 +241,7 @@ public class AdminEndpoint
                 db.Packages.Remove(pkg);
                 await db.SaveChangesAsync();
 
-                var admin = httpReq.HttpContext.Items["AdminUser"] as string;
-                await AuditHelper.LogAsync(db, "delete_package", admin, $"Package {id}, App: {appName}, Version: {pkg.Version}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "delete_package", user.Username, $"Package {id}, App: {appName}, Version: {pkg.Version}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { deleted = true });
             }
@@ -252,11 +252,12 @@ public class AdminEndpoint
             }
         });
 
-        admin.MapGet("/packages/{id:int}", async (int id, AppDbContext db) =>
+        admin.MapGet("/packages/{id:int}", async (int id, HttpRequest httpReq, AppDbContext db) =>
         {
+            var user = (User)httpReq.HttpContext.Items["User"]!;
             var pkg = await db.Packages
                 .Include(p => p.App)
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id && p.App.UserId == user.Id);
 
             if (pkg is null)
                 return Results.NotFound(new { error = "Package not found" });

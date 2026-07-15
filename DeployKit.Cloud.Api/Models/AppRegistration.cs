@@ -6,6 +6,10 @@ public class AppRegistration
 {
     public int Id { get; set; }
 
+    public int UserId { get; set; }
+
+    public User User { get; set; } = null!;
+
     [Required, MaxLength(64)]
     public string AppKey { get; set; } = "";
 
