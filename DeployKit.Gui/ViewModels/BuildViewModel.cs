@@ -20,13 +20,11 @@ public class BuildViewModel : BaseViewModel
     public string NewDir { get => _newDir; set { SetProperty(ref _newDir, value); UpdateCanBuild(); } }
 
     private string _appName = "";
-    public string AppName { get => _appName; set => SetProperty(ref _appName, value); }
-
+    public string AppName { get => _appName; set { SetProperty(ref _appName, value); UpdateCanBuild(); } }
     private string _version = "";
     public string Version { get => _version; set { SetProperty(ref _version, value); UpdateCanBuild(); } }
-
+    private string _fromVersion = "";
     private string _releaseNotes = "";
-    public string ReleaseNotes { get => _releaseNotes; set => SetProperty(ref _releaseNotes, value); }
 
     private string _statusMessage = "";
     public string StatusMessage { get => _statusMessage; set => SetProperty(ref _statusMessage, value); }
@@ -40,20 +38,13 @@ public class BuildViewModel : BaseViewModel
     private double _progress;
     public double Progress { get => _progress; set => SetProperty(ref _progress, value); }
 
+    public bool HasProgress => IsBuilding || IsWorking;
+
     private bool _isBuilding;
-    public bool IsBuilding { get => _isBuilding; set => SetProperty(ref _isBuilding, value); }
-
-    private bool _uploadToGitHub = true;
-    public bool UploadToGitHub { get => _uploadToGitHub; set => SetProperty(ref _uploadToGitHub, value); }
-
-    private bool _isMandatory;
-    public bool IsMandatory { get => _isMandatory; set => SetProperty(ref _isMandatory, value); }
+    public bool IsBuilding { get => _isBuilding; set { SetProperty(ref _isBuilding, value); OnPropertyChanged(nameof(HasProgress)); } }
 
     private bool _isWorking;
-    public bool IsWorking { get => _isWorking; set => SetProperty(ref _isWorking, value); }
-
-    private bool _hasApiKey;
-    public bool HasApiKey { get => _hasApiKey; set => SetProperty(ref _hasApiKey, value); }
+    public bool IsWorking { get => _isWorking; set { SetProperty(ref _isWorking, value); OnPropertyChanged(nameof(HasProgress)); } }
 
     private bool _hasDownloadUrl;
     public bool HasDownloadUrl { get => _hasDownloadUrl; set => SetProperty(ref _hasDownloadUrl, value); }
@@ -63,7 +54,6 @@ public class BuildViewModel : BaseViewModel
 
     public RelayCommand SelectNewDirCommand { get; }
     public RelayCommandAsync BuildPackageCommand { get; }
-    public RelayCommand UploadToCloudCommand { get; }
     public RelayCommand CopyDownloadUrlCommand { get; }
 
     public BuildViewModel(Action<ReleaseRecord>? onReleaseCreated = null)
@@ -71,31 +61,12 @@ public class BuildViewModel : BaseViewModel
         _onReleaseCreated = onReleaseCreated;
         SelectNewDirCommand = new RelayCommand(_ => SelectNewDir());
         BuildPackageCommand = new RelayCommandAsync(async _ => await BuildPackageAsync());
-        UploadToCloudCommand = new RelayCommand(_ => _ = UploadToCloudAsync());
         CopyDownloadUrlCommand = new RelayCommand(_ => CopyDownloadUrl());
-        CheckApiKey();
     }
 
     private void UpdateCanBuild()
     {
-        CanBuild = !string.IsNullOrWhiteSpace(NewDir) && !string.IsNullOrWhiteSpace(Version);
-    }
-
-    private void CheckApiKey()
-    {
-        try
-        {
-            var path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "DeployKit", "settings.json");
-            if (File.Exists(path))
-            {
-                var json = File.ReadAllText(path);
-                var data = JsonSerializer.Deserialize<CloudSettings>(json);
-                HasApiKey = data != null && !string.IsNullOrEmpty(data.ApiKey);
-            }
-        }
-        catch { HasApiKey = false; }
+        CanBuild = !string.IsNullOrWhiteSpace(NewDir) && !string.IsNullOrWhiteSpace(AppName) && !string.IsNullOrWhiteSpace(Version);
     }
 
     private void SelectNewDir()
@@ -143,10 +114,32 @@ public class BuildViewModel : BaseViewModel
             StatusMessage = "الرجاء اختيار مجلد التطبيق الجديد";
             return;
         }
+
+        AutoDetect();
+
         if (string.IsNullOrWhiteSpace(Version))
         {
-            StatusMessage = "الرجاء إدخال رقم الإصدار";
+            StatusMessage = "تعذر اكتشاف رقم الإصدار. تأكد من وجود ملف .exe في المجلد";
             return;
+        }
+
+        _fromVersion = await CheckCloudVersionAsync();
+
+        if (!string.IsNullOrEmpty(_fromVersion))
+        {
+            var cloudVer = TryParseVersion(_fromVersion);
+            var newVer = TryParseVersion(Version);
+            if (cloudVer != null && newVer != null && newVer <= cloudVer)
+            {
+                var result = MessageBox.Show(
+                    $"⚠️ الإصدار في السحابة ({_fromVersion}) أحدث أو يساوي الإصدار الجديد ({Version}).\nهل تريد المتابعة؟",
+                    "تحذير الإصدار", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes)
+                {
+                    StatusMessage = "تم إلغاء البناء — الإصدار الجديد ليس أحدث من إصدار السحابة";
+                    return;
+                }
+            }
         }
 
         var saveDialog = new SaveFileDialog
@@ -173,9 +166,9 @@ public class BuildViewModel : BaseViewModel
             var record = new ReleaseRecord
             {
                 AppName = AppName,
-                FromVersion = "",
+                FromVersion = _fromVersion,
                 ToVersion = Version,
-                ReleaseNotes = ReleaseNotes,
+                ReleaseNotes = _releaseNotes,
                 ZipPath = OutputPath,
                 FileSize = fileSize,
                 CreatedAt = DateTime.Now
@@ -183,9 +176,9 @@ public class BuildViewModel : BaseViewModel
 
             StatusMessage = $"✅ تم إنشاء الحزمة ({FormatSize(fileSize)})";
 
-            // Upload to GitHub if enabled
-            if (UploadToGitHub)
-                await UploadToGitHubReleaseAsync(record);
+            await UploadToGitHubReleaseAsync(record);
+
+            await UploadToCloudAsync();
 
             _onReleaseCreated?.Invoke(record);
         }
@@ -222,22 +215,27 @@ public class BuildViewModel : BaseViewModel
             var repo = $"{data.GitHubUser}/{data.GitHubRepo}";
             var zipName = $"{AppName}_v{Version}.zip";
 
-            using var client = new HttpClient();
+            using var client = new HttpClient { Timeout = TimeSpan.FromMilliseconds(System.Threading.Timeout.Infinite) };
             client.DefaultRequestHeaders.UserAgent.ParseAdd("DeployKit");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GitHubToken);
 
-            // Create release
+            await DeleteExistingReleaseAsync(client, repo, tag);
+
             var createUrl = $"https://api.github.com/repos/{repo}/releases";
             var createBody = JsonSerializer.Serialize(new
             {
                 tag_name = tag,
                 name = tag,
-                body = ReleaseNotes,
+                body = "",
                 prerelease = false
             });
             var createResponse = await client.PostAsync(createUrl,
                 new StringContent(createBody, Encoding.UTF8, "application/json"));
-            createResponse.EnsureSuccessStatusCode();
+            if (!createResponse.IsSuccessStatusCode)
+            {
+                var errBody = await createResponse.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"GitHub create release failed ({createResponse.StatusCode}): {errBody}");
+            }
             var createResult = JsonSerializer.Deserialize<JsonElement>(
                 await createResponse.Content.ReadAsStringAsync());
 
@@ -245,12 +243,18 @@ public class BuildViewModel : BaseViewModel
                 .Replace("{?name,label}", $"?name={zipName}");
             var releaseUrl = createResult.GetProperty("html_url").GetString()!;
 
-            // Upload ZIP
             await using var fileStream = File.OpenRead(OutputPath);
-            using var fileContent = new StreamContent(fileStream);
+            var progressStream = new ProgressStream(fileStream, pct =>
+                Application.Current.Dispatcher.Invoke(() => Progress = pct));
+            using var fileContent = new StreamContent(progressStream);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            fileContent.Headers.ContentLength = fileStream.Length;
             var uploadResponse = await client.PostAsync(uploadUrl, fileContent);
-            uploadResponse.EnsureSuccessStatusCode();
+            if (!uploadResponse.IsSuccessStatusCode)
+            {
+                var errBody = await uploadResponse.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"GitHub upload file failed ({uploadResponse.StatusCode}): {errBody}");
+            }
 
             var assetResult = JsonSerializer.Deserialize<JsonElement>(
                 await uploadResponse.Content.ReadAsStringAsync());
@@ -261,7 +265,6 @@ public class BuildViewModel : BaseViewModel
             record.GitHubReleaseUrl = releaseUrl;
             record.CreatedGitHubRelease = true;
 
-            // Save URL to settings for cloud upload
             data.GitHubRawUrl = downloadUrl;
             var savePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -282,52 +285,82 @@ public class BuildViewModel : BaseViewModel
         }
     }
 
-    private CloudSettings? LoadCloudSettings()
-    {
-        var path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "DeployKit", "settings.json");
-        if (!File.Exists(path)) return null;
-        try
-        {
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<CloudSettings>(json);
-        }
-        catch { return null; }
-    }
-
     private async Task UploadToCloudAsync()
     {
         if (string.IsNullOrEmpty(OutputPath) || !File.Exists(OutputPath)) return;
 
         var data = LoadCloudSettings();
         if (data == null || string.IsNullOrEmpty(data.ApiKey))
-        {
-            StatusMessage = "⚠️ لا يوجد API Key. سجل تطبيقك من صفحة الإعدادات أولاً";
             return;
-        }
 
         IsWorking = true;
         StatusMessage = "☁️ جاري التسجيل في السحابة...";
 
         try
         {
-            var cloud = new CloudService(data.CloudUrl);
+            var cloud = new CloudService(data.CloudUrl, data.AdminToken);
             var downloadUrl = data.GitHubRawUrl;
             if (string.IsNullOrWhiteSpace(downloadUrl))
                 downloadUrl = $"https://github.com/{data.GitHubUser}/{data.GitHubRepo}/releases/download/v{Version}/update.zip";
 
-            var result = await cloud.UploadAsync(data.ApiKey, Version, downloadUrl, ReleaseNotes, IsMandatory);
-            StatusMessage = $"☁️✅ تم التسجيل! الإصدار {result.Version} في السحابة";
+            await cloud.UploadAsync(data.ApiKey, Version, downloadUrl, "", false);
+            StatusMessage = "☁️✅ تم التسجيل في السحابة";
         }
-        catch (Exception ex)
+        catch
         {
-            StatusMessage = $"☁️❌ فشل التسجيل السحابي: {ex.Message}";
+            StatusMessage = "✅ تم رفع الحزمة لكن تعذر التسجيل في السحابة";
         }
         finally
         {
             IsWorking = false;
         }
+    }
+
+    private async Task<string> CheckCloudVersionAsync()
+    {
+        var data = LoadCloudSettings();
+        if (data == null || string.IsNullOrEmpty(data.ApiKey))
+            return "";
+
+        try
+        {
+            var cloud = new CloudService(data.CloudUrl, data.AdminToken);
+            var result = await cloud.CheckVersionAsync(data.ApiKey);
+            if (result != null && !string.IsNullOrEmpty(result.Version))
+            {
+                StatusMessage = $"☁️ آخر إصدار في السحابة: {result.Version}";
+                return result.Version;
+            }
+        }
+        catch { }
+
+        return "";
+    }
+
+    private static Version? TryParseVersion(string v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return null;
+        var parts = v.Trim().Split('.');
+        if (parts.Length < 2) return null;
+        if (!int.TryParse(parts[0], out var major)) return null;
+        if (!int.TryParse(parts[1], out var minor)) return null;
+        var build = parts.Length > 2 && int.TryParse(parts[2], out var b) ? b : 0;
+        return new Version(major, minor, Math.Max(build, 0));
+    }
+
+    private static async Task DeleteExistingReleaseAsync(HttpClient client, string repo, string tag)
+    {
+        var getUrl = $"https://api.github.com/repos/{repo}/releases/tags/{tag}";
+        var getResponse = await client.GetAsync(getUrl);
+        if (!getResponse.IsSuccessStatusCode) return;
+
+        var existing = JsonSerializer.Deserialize<JsonElement>(
+            await getResponse.Content.ReadAsStringAsync());
+        var releaseId = existing.GetProperty("id").GetInt32();
+
+        await client.DeleteAsync($"https://api.github.com/repos/{repo}/releases/{releaseId}");
+
+        await client.DeleteAsync($"https://api.github.com/repos/{repo}/git/refs/tags/{tag}");
     }
 
     private void CopyDownloadUrl()
@@ -353,6 +386,34 @@ public class BuildViewModel : BaseViewModel
         public string? GitHubUser { get; set; }
         public string? GitHubRepo { get; set; }
         public string? GitHubToken { get; set; }
+        public string? GitHubTokenEncrypted { get; set; }
         public string? GitHubRawUrl { get; set; }
+        public string? AdminToken { get; set; }
+        public string? ApiKeyEncrypted { get; set; }
+        public string? AdminTokenEncrypted { get; set; }
+    }
+
+    private CloudSettings? LoadCloudSettings()
+    {
+        var path = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "DeployKit", "settings.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var json = File.ReadAllText(path);
+            var data = JsonSerializer.Deserialize<CloudSettings>(json);
+            if (data != null)
+            {
+                if (!string.IsNullOrEmpty(data.GitHubTokenEncrypted))
+                    data.GitHubToken = SecureStorage.Decrypt(data.GitHubTokenEncrypted);
+                if (!string.IsNullOrEmpty(data.ApiKeyEncrypted))
+                    data.ApiKey = SecureStorage.Decrypt(data.ApiKeyEncrypted);
+                if (!string.IsNullOrEmpty(data.AdminTokenEncrypted))
+                    data.AdminToken = SecureStorage.Decrypt(data.AdminTokenEncrypted);
+            }
+            return data;
+        }
+        catch { return null; }
     }
 }

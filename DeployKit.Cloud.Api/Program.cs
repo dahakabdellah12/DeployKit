@@ -24,12 +24,9 @@ var connString = !string.IsNullOrWhiteSpace(connStr)
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite(connString));
 
-builder.Services.AddCors(opt =>
-{
-    opt.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-});
-
 var app = builder.Build();
+
+app.UseHsts();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -38,12 +35,11 @@ using (var scope = app.Services.CreateScope())
     Directory.CreateDirectory(dataDir);
 }
 
-app.UseCors();
 app.UseStaticFiles();
 
-RegisterEndpoint.Map(app);
 UploadEndpoint.Map(app);
 CheckEndpoint.Map(app);
+VersionEndpoint.Map(app);
 AdminEndpoint.Map(app);
 LoginEndpoint.Map(app);
 

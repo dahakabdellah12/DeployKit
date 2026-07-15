@@ -16,6 +16,11 @@ out/
 Thumbs.db
 .idea/
 
+## Secrets & deployment config
+render.yaml
+*.env
+appsettings.*.local.json
+
 ## Runtime / Build output
 dist/
 artifacts/

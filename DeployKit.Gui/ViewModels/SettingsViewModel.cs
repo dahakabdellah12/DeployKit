@@ -11,27 +11,6 @@ public class SettingsViewModel : BaseViewModel
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "DeployKit", "settings.json");
 
-    private string _appName = "";
-    public string AppName
-    {
-        get => _appName;
-        set => SetProperty(ref _appName, value);
-    }
-
-    private string _apiKey = "";
-    public string ApiKey
-    {
-        get => _apiKey;
-        set { SetProperty(ref _apiKey, value); HasApiKey = !string.IsNullOrEmpty(value); }
-    }
-
-    private string _cloudUrl = "https://deploykit-gb81.onrender.com";
-    public string CloudUrl
-    {
-        get => _cloudUrl;
-        set => SetProperty(ref _cloudUrl, value);
-    }
-
     private string _gitHubUser = "";
     public string GitHubUser
     {
@@ -53,6 +32,27 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _gitHubToken, value);
     }
 
+    private string _cloudUrl = "http://localhost:5000";
+    public string CloudUrl
+    {
+        get => _cloudUrl;
+        set => SetProperty(ref _cloudUrl, value);
+    }
+
+    private string _apiKey = "";
+    public string ApiKey
+    {
+        get => _apiKey;
+        set => SetProperty(ref _apiKey, value);
+    }
+
+    private string _adminToken = "";
+    public string AdminToken
+    {
+        get => _adminToken;
+        set => SetProperty(ref _adminToken, value);
+    }
+
     private string _statusMessage = "";
     public string StatusMessage
     {
@@ -60,21 +60,14 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _statusMessage, value);
     }
 
-    private bool _hasApiKey;
-    public bool HasApiKey
-    {
-        get => _hasApiKey;
-        set => SetProperty(ref _hasApiKey, value);
-    }
+    public string AppVersion { get; } = typeof(SettingsViewModel).Assembly.GetName().Version is { } v
+        ? $"{v.Major}.{v.Minor}.{v.Build}"
+        : "1.0.0";
 
-    public RelayCommand OpenDashboardCommand { get; }
-    public RelayCommand CopyKeyCommand { get; }
     public RelayCommand SaveSettingsCommand { get; }
 
     public SettingsViewModel()
     {
-        OpenDashboardCommand = new RelayCommand(_ => OpenDashboard());
-        CopyKeyCommand = new RelayCommand(_ => CopyKey());
         SaveSettingsCommand = new RelayCommand(_ => SaveSettings());
         LoadSettings();
     }
@@ -89,13 +82,12 @@ public class SettingsViewModel : BaseViewModel
                 var data = JsonSerializer.Deserialize<SettingsData>(json);
                 if (data != null)
                 {
-                    ApiKey = data.ApiKey ?? "";
-                    CloudUrl = data.CloudUrl ?? "http://localhost:5000";
-                    AppName = data.AppName ?? "";
                     GitHubUser = data.GitHubUser ?? "";
                     GitHubRepo = data.GitHubRepo ?? "";
-                    GitHubToken = data.GitHubToken ?? "";
-                    HasApiKey = !string.IsNullOrEmpty(ApiKey);
+                    GitHubToken = SecureStorage.Decrypt(data.GitHubTokenEncrypted) ?? "";
+                    CloudUrl = data.CloudUrl ?? "http://localhost:5000";
+                    ApiKey = SecureStorage.Decrypt(data.ApiKeyEncrypted) ?? "";
+                    AdminToken = SecureStorage.Decrypt(data.AdminTokenEncrypted) ?? "";
                 }
             }
         }
@@ -112,12 +104,12 @@ public class SettingsViewModel : BaseViewModel
 
             var data = new SettingsData
             {
-                ApiKey = ApiKey,
-                CloudUrl = CloudUrl,
-                AppName = AppName,
                 GitHubUser = GitHubUser,
                 GitHubRepo = GitHubRepo,
-                GitHubToken = GitHubToken
+                GitHubTokenEncrypted = SecureStorage.Encrypt(GitHubToken),
+                CloudUrl = CloudUrl,
+                ApiKeyEncrypted = SecureStorage.Encrypt(ApiKey),
+                AdminTokenEncrypted = SecureStorage.Encrypt(AdminToken)
             };
             File.WriteAllText(SettingsFile, JsonSerializer.Serialize(data));
             StatusMessage = "✅ تم حفظ الإعدادات";
@@ -125,36 +117,15 @@ public class SettingsViewModel : BaseViewModel
         catch { }
     }
 
-    private void OpenDashboard()
+    internal class SettingsData
     {
-        var url = CloudUrl?.TrimEnd('/') ?? "http://localhost:5000";
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch { }
-    }
-
-    private void CopyKey()
-    {
-        if (!string.IsNullOrEmpty(ApiKey))
-        {
-            System.Windows.Clipboard.SetText(ApiKey);
-            StatusMessage = "📋 تم نسخ المفتاح";
-        }
-    }
-
-    private class SettingsData
-    {
-        public string? ApiKey { get; set; }
         public string? CloudUrl { get; set; }
-        public string? AppName { get; set; }
         public string? GitHubUser { get; set; }
         public string? GitHubRepo { get; set; }
         public string? GitHubToken { get; set; }
+        public string? GitHubTokenEncrypted { get; set; }
+        public string? GitHubRawUrl { get; set; }
+        public string? ApiKeyEncrypted { get; set; }
+        public string? AdminTokenEncrypted { get; set; }
     }
 }

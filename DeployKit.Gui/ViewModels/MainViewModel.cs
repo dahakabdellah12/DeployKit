@@ -18,15 +18,6 @@ public class MainViewModel : BaseViewModel
         set => SetProperty(ref _selectedNavIndex, value);
     }
 
-    private bool _isDarkTheme;
-    public bool IsDarkTheme
-    {
-        get => _isDarkTheme;
-        set => SetProperty(ref _isDarkTheme, value);
-    }
-
-    public string ThemeIcon => IsDarkTheme ? "☀️" : "🌙";
-
     public HomeViewModel HomeVM { get; }
     public BuildViewModel BuildVM { get; }
     public SettingsViewModel SettingsVM { get; }
@@ -36,7 +27,6 @@ public class MainViewModel : BaseViewModel
     public RelayCommand ShowBuildCommand { get; }
     public RelayCommand ShowUploadCommand { get; }
     public RelayCommand ShowSettingsCommand { get; }
-    public RelayCommand ToggleThemeCommand { get; }
 
     public MainViewModel()
     {
@@ -50,9 +40,6 @@ public class MainViewModel : BaseViewModel
         ShowBuildCommand = new RelayCommand(_ => NavigateTo(1));
         ShowUploadCommand = new RelayCommand(_ => NavigateTo(2));
         ShowSettingsCommand = new RelayCommand(_ => NavigateTo(3));
-        ToggleThemeCommand = new RelayCommand(_ => ToggleTheme());
-
-        ThemeService.Instance.ThemeChanged += OnThemeChanged;
     }
 
     public void NavigateTo(int index)
@@ -68,14 +55,4 @@ public class MainViewModel : BaseViewModel
         };
     }
 
-    private void ToggleTheme()
-    {
-        ThemeService.Instance.Toggle();
-    }
-
-    private void OnThemeChanged()
-    {
-        IsDarkTheme = ThemeService.Instance.IsDark;
-        OnPropertyChanged(nameof(ThemeIcon));
-    }
 }

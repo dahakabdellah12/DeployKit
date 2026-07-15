@@ -70,6 +70,9 @@ public static class DeployKit
 
     public static string GetCurrentVersion()
     {
+        var stored = GetStoredVersion();
+        if (!string.IsNullOrEmpty(stored))
+            return stored;
         return _config?.CurrentVersion ?? DetectVersion();
     }
 
@@ -153,12 +156,29 @@ public static class DeployKit
         }
     }
 
+    public static void MarkUpdateComplete(string newVersion)
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DeployKit", "current_version.txt");
+            var dir = Path.GetDirectoryName(path)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(path, newVersion);
+        }
+        catch { }
+    }
+
     private static async Task CheckAndNotifyAsync()
     {
         try
         {
             var result = await CheckAsync();
-            if (result.HasUpdate && System.Windows.Application.Current != null)
+            if (result.HasUpdate
+                && !string.IsNullOrEmpty(result.LatestVersion)
+                && result.LatestVersion != (_config?.CurrentVersion ?? "")
+                && System.Windows.Application.Current != null)
             {
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {

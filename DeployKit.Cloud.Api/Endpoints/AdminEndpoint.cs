@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Models;
@@ -7,7 +8,7 @@ namespace DeployKit.Cloud.Api.Endpoints;
 public record RegisterRequest(string AppName);
 public record UpdatePackageRequest(string? Version, string? DownloadUrl, string? ReleaseNotes, bool? IsMandatory);
 
-public static class AdminEndpoint
+public class AdminEndpoint
 {
     public static void Map(WebApplication app)
     {
@@ -20,7 +21,14 @@ public static class AdminEndpoint
 
             var token = auth["Bearer ".Length..];
             var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-            var user = await db.AdminUsers.FirstOrDefaultAsync(u => u.Token == token && u.TokenExpires > DateTime.UtcNow);
+            var users = await db.AdminUsers
+                .Where(u => u.TokenExpires > DateTime.UtcNow)
+                .ToListAsync();
+            var user = users.FirstOrDefault(u =>
+                u.Token.Length == token.Length &&
+                CryptographicOperations.FixedTimeEquals(
+                    System.Text.Encoding.UTF8.GetBytes(u.Token),
+                    System.Text.Encoding.UTF8.GetBytes(token)));
 
             if (user == null)
                 return Results.Json(new { error = "Invalid or expired token" }, statusCode: 401);
@@ -77,7 +85,7 @@ public static class AdminEndpoint
             });
         });
 
-        admin.MapPost("/register", async (RegisterRequest req, AppDbContext db) =>
+        admin.MapPost("/register", async (RegisterRequest req, AppDbContext db, ILogger<AdminEndpoint> logger) =>
         {
             try
             {
@@ -96,7 +104,8 @@ public static class AdminEndpoint
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
+                logger.LogError(ex, "App registration failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
         });
 

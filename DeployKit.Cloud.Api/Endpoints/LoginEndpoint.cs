@@ -1,16 +1,14 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
 
-public static class LoginEndpoint
+public class LoginEndpoint
 {
     public static void Map(WebApplication app)
     {
-        app.MapPost("/v1/admin/setup", async (SetupRequest req, AppDbContext db) =>
+        app.MapPost("/v1/admin/setup", async (SetupRequest req, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {
             try
             {
@@ -24,7 +22,7 @@ public static class LoginEndpoint
                 var user = new AdminUser
                 {
                     Username = req.Username,
-                    PasswordHash = HashPassword(req.Password),
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
                     Token = token,
                     TokenExpires = DateTime.UtcNow.AddDays(90)
                 };
@@ -36,11 +34,12 @@ public static class LoginEndpoint
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
+                logger.LogError(ex, "Admin setup failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
         });
 
-        app.MapPost("/v1/admin/login", async (LoginRequest req, AppDbContext db) =>
+        app.MapPost("/v1/admin/login", async (LoginRequest req, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {
             try
             {
@@ -48,7 +47,7 @@ public static class LoginEndpoint
                     return Results.BadRequest(new { error = "Username and password are required" });
 
                 var user = await db.AdminUsers.FirstOrDefaultAsync(u => u.Username == req.Username);
-                if (user == null || user.PasswordHash != HashPassword(req.Password))
+                if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
                     return Results.Unauthorized();
 
                 if (user.TokenExpires < DateTime.UtcNow)
@@ -64,7 +63,8 @@ public static class LoginEndpoint
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
+                logger.LogError(ex, "Admin login failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
         });
 
@@ -73,12 +73,6 @@ public static class LoginEndpoint
             var hasAdmin = await db.AdminUsers.AnyAsync();
             return Results.Ok(new { hasAdmin, needsSetup = !hasAdmin });
         });
-    }
-
-    private static string HashPassword(string password)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     public record SetupRequest(string Username, string Password);

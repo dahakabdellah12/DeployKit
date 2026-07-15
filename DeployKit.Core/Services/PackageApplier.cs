@@ -31,7 +31,9 @@ public class PackageApplier
 
         if (_decryptedPath == null)
         {
-            _decryptedPath = packagePath + ".dec";
+            _decryptedPath = Path.Combine(
+                Path.GetTempPath(), "DeployKit", $"{Path.GetRandomFileName()}.dec");
+            Directory.CreateDirectory(Path.GetDirectoryName(_decryptedPath)!);
             _encryption.DecryptFileAsync(packagePath, _decryptedPath).GetAwaiter().GetResult();
         }
         return _decryptedPath;
@@ -78,7 +80,7 @@ public class PackageApplier
 
             foreach (var deleted in manifest.Deleted)
             {
-                var fullPath = Path.Combine(targetDir, deleted.Path);
+                var fullPath = SafePath(targetDir, deleted.Path);
                 if (File.Exists(fullPath))
                     File.Delete(fullPath);
 
@@ -91,7 +93,7 @@ public class PackageApplier
             {
                 var entry = archive.GetEntry(added.Path)
                     ?? throw new InvalidOperationException($"File not found in package: {added.Path}");
-                var fullPath = Path.Combine(targetDir, added.Path);
+                var fullPath = SafePath(targetDir, added.Path);
                 var dir = Path.GetDirectoryName(fullPath)!;
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
@@ -106,7 +108,7 @@ public class PackageApplier
             {
                 foreach (var modified in manifest.Modified)
                 {
-                    var fullPath = Path.Combine(targetDir, modified.Path);
+                    var fullPath = SafePath(targetDir, modified.Path);
                     var dir = Path.GetDirectoryName(fullPath)!;
                     if (!Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
@@ -168,7 +170,7 @@ public class PackageApplier
 
             foreach (var file in manifest.AllFiles)
             {
-                var fullPath = Path.Combine(targetDir, file.Path);
+                var fullPath = SafePath(targetDir, file.Path);
                 var dir = Path.GetDirectoryName(fullPath)!;
 
                 if (File.Exists(fullPath))
@@ -214,6 +216,15 @@ public class PackageApplier
         }
 
         Cleanup();
+    }
+
+    private static string SafePath(string baseDir, string relativePath)
+    {
+        var full = Path.GetFullPath(Path.Combine(baseDir, relativePath));
+        var baseFull = Path.GetFullPath(baseDir);
+        if (!full.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Path traversal detected: {relativePath}");
+        return full;
     }
 
     private static async Task RetryableWriteAsync(string path, Func<Stream> openEntry, int maxRetries = 10)

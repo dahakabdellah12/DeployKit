@@ -47,11 +47,6 @@ public partial class MainWindow : Window
         }
         else if (e.KeyboardDevice.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
-            if (e.Key == Key.T)
-            {
-                vm.ToggleThemeCommand.Execute(null);
-                e.Handled = true;
-            }
         }
     }
 

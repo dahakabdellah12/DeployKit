@@ -14,25 +14,28 @@ public class CheckResponse
     public bool IsFullPackage { get; set; } = true;
 }
 
-public static class CheckEndpoint
+public class CheckEndpoint
 {
     public static void Map(WebApplication app)
     {
-        app.MapGet("/v1/check", async (string key, string v, AppDbContext db) =>
+        app.MapGet("/v1/check", async (HttpRequest req, AppDbContext db, ILogger<CheckEndpoint> logger) =>
         {
             try
             {
+                var key = req.Headers["X-Api-Key"].FirstOrDefault();
+                var v = req.Query["v"].FirstOrDefault();
+
                 if (string.IsNullOrWhiteSpace(key))
-                    return Results.BadRequest(new { error = "App key is required" });
+                    return Results.BadRequest(new { error = "App key is required (X-Api-Key header)" });
 
                 var appReg = await db.Apps
                     .Include(a => a.Packages)
                     .FirstOrDefaultAsync(a => a.AppKey == key);
 
                 if (appReg == null)
-                    return Results.NotFound(new { error = "App not found. Register first at POST /v1/register?name=YourApp" });
+                    return Results.NotFound(new { error = "App not found" });
 
-                var current = TryParseVersion(v);
+                var current = TryParseVersion(v!);
                 if (current == null)
                     return Results.BadRequest(new { error = "Invalid version format. Expected x.y.z" });
 
@@ -67,7 +70,8 @@ public static class CheckEndpoint
             }
             catch (Exception ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
+                logger.LogError(ex, "Check failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
         });
     }
