@@ -4,6 +4,7 @@ let currentAppKey = null;
 let currentPackages = [];
 let idleTimer = null;
 const IDLE_TIMEOUT = 30 * 60 * 1000;
+let authMode = 'login';
 
 function resetIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
@@ -66,36 +67,29 @@ function copyText(text) {
   });
 }
 
-// ---------- Setup ----------
-async function setup() {
-  const username = document.getElementById('setupUser').value.trim();
-  const password = document.getElementById('setupPass').value.trim();
-  const error = document.getElementById('setupError');
-  if (!username || !password) { error.textContent = 'الرجاء ملء جميع الحقول'; error.classList.remove('hidden'); return; }
-  try {
-    const res = await fetch(baseUrl + '/v1/admin/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    }).then(r => r.json());
-    if (res.error) { error.textContent = res.error; error.classList.remove('hidden'); return; }
-    token = res.token;
-    localStorage.setItem('dk_token', token);
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    loadApps();
-    resetIdleTimer();
-  } catch(e) { error.textContent = '❌ ' + e.message; error.classList.remove('hidden'); }
+// ---------- Auth ----------
+function toggleAuth() {
+  authMode = authMode === 'login' ? 'setup' : 'login';
+  if (authMode === 'login') {
+    document.getElementById('authTitle').textContent = 'تسجيل الدخول';
+    document.getElementById('authBtn').textContent = 'دخول';
+    document.getElementById('authToggle').textContent = 'ليس لديك حساب؟ إنشاء حساب جديد';
+  } else {
+    document.getElementById('authTitle').textContent = 'إنشاء حساب المسؤول';
+    document.getElementById('authBtn').textContent = 'إنشاء الحساب';
+    document.getElementById('authToggle').textContent = 'لديك حساب؟ تسجيل الدخول';
+  }
+  document.getElementById('authError').classList.add('hidden');
 }
 
-// ---------- Login ----------
-async function login() {
-  const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value.trim();
-  const error = document.getElementById('loginError');
-  if (!username || !password) { error.textContent = 'الرجاء إدخال اسم المستخدم وكلمة المرور'; error.classList.remove('hidden'); return; }
+async function submitAuth() {
+  const username = document.getElementById('authUser').value.trim();
+  const password = document.getElementById('authPass').value.trim();
+  const error = document.getElementById('authError');
+  if (!username || !password) { error.textContent = 'الرجاء ملء جميع الحقول'; error.classList.remove('hidden'); return; }
   try {
-    const res = await fetch(baseUrl + '/v1/admin/login', {
+    const endpoint = authMode === 'login' ? '/v1/admin/login' : '/v1/admin/setup';
+    const res = await fetch(baseUrl + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -348,13 +342,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener(ev, resetIdleTimer)
   );
 
-  document.getElementById('setupUser').addEventListener('keydown', e => { if (e.key === 'Enter') setup(); });
-  document.getElementById('setupPass').addEventListener('keydown', e => { if (e.key === 'Enter') setup(); });
-  document.getElementById('setupBtn').addEventListener('click', setup);
-
-  document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-  document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-  document.getElementById('loginBtn').addEventListener('click', login);
+  document.getElementById('authUser').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+  document.getElementById('authPass').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+  document.getElementById('authBtn').addEventListener('click', submitAuth);
+  document.getElementById('authToggle').addEventListener('click', e => { e.preventDefault(); toggleAuth(); });
 
   document.getElementById('showRegisterBtn').addEventListener('click', showRegisterModal);
   document.getElementById('showUploadBtn').addEventListener('click', showUploadModal);

@@ -58,22 +58,15 @@
 <div id="login" class="login-box container">
   <h1>DeployKit Dashboard</h1>
 
-  <div id="setupForm" class="card">
-    <h2>إنشاء حساب المسؤول</h2>
-    <p style="font-size:13px;color:#a1a1aa">المسؤول الأول (مرة واحدة فقط)</p>
-    <input type="text" id="setupUser" placeholder="اسم المستخدم" autocomplete="off">
-    <input type="password" id="setupPass" placeholder="كلمة المرور">
-    <button id="setupBtn" class="btn btn-primary" style="width:100%">إنشاء الحساب</button>
-    <div id="setupError" class="error hidden"></div>
-  </div>
-
-  <div id="loginForm" class="card" style="margin-top:16px">
-    <h2>تسجيل الدخول</h2>
-    <p style="font-size:13px;color:#a1a1aa">إذا كان لديك حساب مسؤول مسبقًا</p>
-    <input type="text" id="loginUser" placeholder="اسم المستخدم" autocomplete="username">
-    <input type="password" id="loginPass" placeholder="كلمة المرور" autocomplete="current-password">
-    <button id="loginBtn" class="btn btn-primary" style="width:100%">دخول</button>
-    <div id="loginError" class="error hidden"></div>
+  <div id="authForm" class="card">
+    <h2 id="authTitle">تسجيل الدخول</h2>
+    <input type="text" id="authUser" placeholder="اسم المستخدم" autocomplete="username">
+    <input type="password" id="authPass" placeholder="كلمة المرور" autocomplete="current-password">
+    <button id="authBtn" class="btn btn-primary" style="width:100%">دخول</button>
+    <div style="text-align:center;margin-top:12px">
+      <a href="#" id="authToggle" style="color:#a1a1aa;font-size:13px;text-decoration:none">ليس لديك حساب؟ إنشاء حساب جديد</a>
+    </div>
+    <div id="authError" class="error hidden"></div>
   </div>
 </div>
 
