@@ -83,7 +83,7 @@ app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers.Append("Content-Security-Policy",
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline'; " +
+        "script-src 'self'; " +
         "style-src 'self' 'unsafe-inline'; " +
         "connect-src 'self'; " +
         "img-src 'self' data:; " +
