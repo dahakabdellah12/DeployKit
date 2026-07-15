@@ -115,20 +115,28 @@ public class AdminEndpoint
             }
         });
 
-        admin.MapPost("/apps/{key}/regenerate-key", async (string key, HttpRequest httpReq, AppDbContext db) =>
+        admin.MapPost("/apps/{key}/regenerate-key", async (string key, HttpRequest httpReq, AppDbContext db, ILogger<AdminEndpoint> logger) =>
         {
-            var app = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key);
-            if (app is null)
-                return Results.NotFound(new { error = "App not found" });
+            try
+            {
+                var app = await db.Apps.FirstOrDefaultAsync(a => a.AppKey == key);
+                if (app is null)
+                    return Results.NotFound(new { error = "App not found" });
 
-            var newKey = Guid.NewGuid().ToString("N");
-            app.AppKey = newKey;
-            await db.SaveChangesAsync();
+                var newKey = Guid.NewGuid().ToString("N");
+                app.AppKey = newKey;
+                await db.SaveChangesAsync();
 
-            var admin = httpReq.HttpContext.Items["AdminUser"] as string;
-            await AuditHelper.LogAsync(db, "regenerate_key", admin, $"App: {app.AppName}, Old: {key}, New: {newKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                var adminUser = httpReq.HttpContext.Items["AdminUser"] as string;
+                await AuditHelper.LogAsync(db, "regenerate_key", adminUser, $"App: {app.AppName}, Old: {key}, New: {newKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
-            return Results.Ok(new { appKey = newKey });
+                return Results.Ok(new { appKey = newKey });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Regenerate key failed");
+                return Results.Problem(detail: "Internal server error", statusCode: 500);
+            }
         });
 
         admin.MapDelete("/apps/{key}", async (string key, HttpRequest httpReq, AppDbContext db, ILogger<AdminEndpoint> logger) =>

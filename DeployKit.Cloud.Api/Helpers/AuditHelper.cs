@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Models;
 
@@ -23,7 +24,12 @@ public static class AuditHelper
         var auth = ctx.Request.Headers.Authorization.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(auth) || !auth.StartsWith("Bearer ")) return null;
         var token = auth["Bearer ".Length..];
-        var user = db.AdminUsers.FirstOrDefault(u => u.Token == token && u.TokenExpires > DateTime.UtcNow);
+        var users = db.AdminUsers.Where(u => u.TokenExpires > DateTime.UtcNow).ToList();
+        var user = users.FirstOrDefault(u =>
+            u.Token.Length == token.Length &&
+            CryptographicOperations.FixedTimeEquals(
+                System.Text.Encoding.UTF8.GetBytes(u.Token),
+                System.Text.Encoding.UTF8.GetBytes(token)));
         return user?.Username;
     }
 }

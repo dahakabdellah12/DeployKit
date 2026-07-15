@@ -16,6 +16,9 @@ public class LoginEndpoint
                 if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
                     return Results.BadRequest(new { error = "Username and password are required" });
 
+                if (req.Password.Length < 6)
+                    return Results.BadRequest(new { error = "Password must be at least 6 characters" });
+
                 if (await db.AdminUsers.AnyAsync())
                     return Results.BadRequest(new { error = "Admin already exists" });
 
