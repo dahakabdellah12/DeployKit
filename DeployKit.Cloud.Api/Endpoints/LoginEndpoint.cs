@@ -37,7 +37,7 @@ public class LoginEndpoint
                 logger.LogError(ex, "Admin setup failed");
                 return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-        });
+        }).RequireRateLimiting("Login");
 
         app.MapPost("/v1/admin/login", async (LoginRequest req, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {
@@ -66,7 +66,7 @@ public class LoginEndpoint
                 logger.LogError(ex, "Admin login failed");
                 return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-        });
+        }).RequireRateLimiting("Login");
 
         app.MapGet("/v1/admin/status", async (AppDbContext db) =>
         {

@@ -73,7 +73,7 @@ public class CheckEndpoint
                 logger.LogError(ex, "Check failed");
                 return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-        });
+        }).RequireRateLimiting("Api");
     }
 
     private static Version? TryParseVersion(string v)

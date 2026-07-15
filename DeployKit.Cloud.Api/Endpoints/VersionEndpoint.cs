@@ -61,7 +61,7 @@ public class VersionEndpoint
                 logger.LogError(ex, "Version check failed");
                 return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-        });
+        }).RequireRateLimiting("Api");
     }
 
     private static Version? TryParseVersion(string v)

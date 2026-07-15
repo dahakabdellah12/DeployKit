@@ -182,10 +182,10 @@ let baseUrl = window.location.origin;
 let currentAppKey = null;
 let currentPackages = [];
 
-async function api(method, path, body) {
+async function api(method, path, body, extraHeaders) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
-  const opts = { method, headers: { 'Authorization': 'Bearer ' + token }, signal: controller.signal };
+  const opts = { method, headers: { 'Authorization': 'Bearer ' + token, ...extraHeaders }, signal: controller.signal };
   if (body) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
@@ -446,10 +446,10 @@ async function uploadUpdate() {
   if (!key || !version || !url) { status.textContent = 'الرجاء ملء جميع الحقول المطلوبة'; status.style.color = '#f87171'; status.classList.remove('hidden'); return; }
 
   try {
-    let query = `key=${encodeURIComponent(key)}&version=${encodeURIComponent(version)}&url=${encodeURIComponent(url)}`;
+    let query = `version=${encodeURIComponent(version)}&url=${encodeURIComponent(url)}`;
     if (notes) query += `&notes=${encodeURIComponent(notes)}`;
     if (mandatory) query += '&mandatory=true';
-    const res = await api('POST', `/v1/upload?${query}`);
+    const res = await api('POST', `/v1/upload?${query}`, null, { 'X-Api-Key': key });
     if (!res) return;
     status.textContent = `✅ تم الإضافة! v${version} — ${res.isMandatory ? 'إجباري' : 'اختياري'} (حزمة كاملة)`;
     status.style.color = '#86efac';

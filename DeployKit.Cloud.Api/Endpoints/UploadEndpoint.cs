@@ -80,6 +80,6 @@ public class UploadEndpoint
                 logger.LogError(ex, "Upload failed");
                 return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-        });
+        }).RequireRateLimiting("Upload");
     }
 }

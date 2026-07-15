@@ -12,7 +12,7 @@ public class AdminEndpoint
 {
     public static void Map(WebApplication app)
     {
-        var admin = app.MapGroup("/v1/admin");
+        var admin = app.MapGroup("/v1/admin").RequireRateLimiting("Admin");
         admin.AddEndpointFilter(async (ctx, next) =>
         {
             var auth = ctx.HttpContext.Request.Headers.Authorization.FirstOrDefault();
