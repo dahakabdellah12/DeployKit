@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Helpers;
@@ -6,11 +5,8 @@ using DeployKit.Cloud.Api.Models;
 
 namespace DeployKit.Cloud.Api.Endpoints;
 
-public partial class LoginEndpoint
+public class LoginEndpoint
 {
-    [GeneratedRegex(@"^(?=.*[A-Z])(?=.*\d).{8,}$")]
-    private static partial Regex PasswordRegex();
-
     public static void Map(WebApplication app)
     {
         app.MapPost("/v1/admin/setup", async (SetupRequest req, HttpRequest httpReq, AppDbContext db, ILogger<LoginEndpoint> logger) =>
@@ -142,11 +138,8 @@ public partial class LoginEndpoint
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             return "Username and password are required";
 
-        if (!PasswordRegex().IsMatch(password))
-            return "Password must be at least 8 characters, include an uppercase letter and a digit";
-
-        if (username.Length < 3)
-            return "Username must be at least 3 characters";
+        if (username.Length < 1)
+            return "Username must be at least 1 character";
 
         return null;
     }
