@@ -53,7 +53,7 @@ public class LoginEndpoint
                 if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
                 {
                     await AuditHelper.LogAsync(db, "login_failed", req.Username, "Invalid credentials", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
-                    return Results.Unauthorized();
+                    return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
                 }
 
                 if (user.TokenExpires < DateTime.UtcNow)

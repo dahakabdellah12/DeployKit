@@ -226,8 +226,13 @@ async function init() {
   try {
     const status = await fetch(baseUrl + '/v1/admin/status').then(r => r.json());
     if (!status.hasAdmin) {
+      token = '';
+      localStorage.removeItem('dk_token');
       document.getElementById('loginForm').classList.add('hidden');
       document.getElementById('setupForm').classList.remove('hidden');
+      document.getElementById('login').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+      return;
     } else {
       document.getElementById('setupForm').classList.add('hidden');
       document.getElementById('loginForm').classList.remove('hidden');
@@ -255,6 +260,15 @@ function showLogin() {
   localStorage.removeItem('dk_token');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login').classList.remove('hidden');
+  document.getElementById('setupForm').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+  // Check if admin exists to toggle form
+  fetch(baseUrl + '/v1/admin/status').then(r => r.json()).then(s => {
+    if (!s.hasAdmin) {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('setupForm').classList.remove('hidden');
+    }
+  }).catch(() => {});
 }
 
 async function setup() {
