@@ -23,6 +23,17 @@ var connString = !string.IsNullOrWhiteSpace(connStr)
     ? connStr
     : $"Data Source={Path.Combine(dataDir, "deploykit.db")}";
 
+// Resolve relative SQLite paths to the content root to avoid CWD issues
+if (!string.IsNullOrWhiteSpace(connString) && connString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+{
+    var dbPath = connString["Data Source=".Length..].Trim();
+    if (!Path.IsPathRooted(dbPath))
+    {
+        var rooted = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, dbPath));
+        connString = $"Data Source={rooted}";
+    }
+}
+
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite(connString));
 
