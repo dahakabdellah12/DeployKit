@@ -175,6 +175,12 @@ DeployKit/
 
 ---
 
+## 📖 Developer Guide
+
+For a **complete step-by-step walkthrough** — deploying the server, registering apps, uploading updates, integrating the SDK into your WPF app, and troubleshooting — see the **[Developer Guide](DEVELOPER_GUIDE.md)**.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
