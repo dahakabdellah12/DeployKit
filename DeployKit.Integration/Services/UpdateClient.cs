@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using DeployKit.Integration.Models;
 
 namespace DeployKit.Integration.Services;
@@ -23,8 +24,7 @@ public class UpdateClient
 
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync();
-                return new UpdateResult { ErrorMessage = $"Cloud API returned {(int)response.StatusCode}: {body}" };
+                return new UpdateResult { ErrorMessage = $"Cloud API returned {(int)response.StatusCode}" };
             }
 
             var result = await response.Content.ReadFromJsonAsync<UpdateResult>();
@@ -36,7 +36,7 @@ public class UpdateClient
         }
     }
 
-    public async Task<string> DownloadPackageAsync(string downloadUrl, string destinationPath, IProgress<double>? progress = null)
+    public async Task<string> DownloadPackageAsync(string downloadUrl, string destinationPath, string expectedHash, IProgress<double>? progress = null)
     {
         using var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
@@ -45,6 +45,7 @@ public class UpdateClient
         await using var contentStream = await response.Content.ReadAsStreamAsync();
         await using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
+        using var sha256 = SHA256.Create();
         var buffer = new byte[81920];
         long bytesRead = 0;
 
@@ -52,11 +53,18 @@ public class UpdateClient
         while ((read = await contentStream.ReadAsync(buffer)) > 0)
         {
             await fileStream.WriteAsync(buffer.AsMemory(0, read));
+            sha256.TransformBlock(buffer, 0, read, null, 0);
             bytesRead += read;
 
             if (totalBytes > 0)
                 progress?.Report((double)bytesRead / totalBytes * 100);
         }
+
+        sha256.TransformFinalBlock([], 0, 0);
+        var actualHash = Convert.ToHexString(sha256.Hash!).ToLowerInvariant();
+
+        if (!string.IsNullOrEmpty(expectedHash) && !string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Package hash mismatch. Expected {expectedHash}, got {actualHash}");
 
         return destinationPath;
     }

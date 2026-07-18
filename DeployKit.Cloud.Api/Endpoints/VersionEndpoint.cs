@@ -11,6 +11,7 @@ public class VersionResponse
     public long FileSize { get; set; }
     public string? ReleaseNotes { get; set; }
     public bool IsMandatory { get; set; }
+    public string? PackageHash { get; set; }
 }
 
 public class VersionEndpoint
@@ -53,7 +54,8 @@ public class VersionEndpoint
                     DownloadUrl = latest.DownloadUrl,
                     FileSize = latest.FileSize,
                     ReleaseNotes = latest.ReleaseNotes,
-                    IsMandatory = latest.IsMandatory
+                    IsMandatory = latest.IsMandatory,
+                    PackageHash = latest.PackageHash
                 });
             }
             catch (Exception ex)

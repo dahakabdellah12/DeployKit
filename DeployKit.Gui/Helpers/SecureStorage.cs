@@ -1,3 +1,4 @@
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -5,7 +6,23 @@ namespace DeployKit.Gui.Helpers;
 
 internal static class SecureStorage
 {
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("DeployKit");
+    private static readonly byte[] Entropy;
+
+    static SecureStorage()
+    {
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeployKit");
+        Directory.CreateDirectory(dir);
+        var entropyPath = Path.Combine(dir, ".entropy");
+        if (File.Exists(entropyPath) && new FileInfo(entropyPath).Length == 16)
+        {
+            Entropy = File.ReadAllBytes(entropyPath);
+        }
+        else
+        {
+            Entropy = RandomNumberGenerator.GetBytes(16);
+            File.WriteAllBytes(entropyPath, Entropy);
+        }
+    }
 
     public static string? Encrypt(string? plain)
     {

@@ -12,6 +12,7 @@ public class CheckResponse
     public string ReleaseNotes { get; set; } = "";
     public bool IsMandatory { get; set; }
     public bool IsFullPackage { get; set; } = true;
+    public string PackageHash { get; set; } = "";
 }
 
 public class CheckEndpoint
@@ -65,7 +66,8 @@ public class CheckEndpoint
                     PackageSize = latest.FileSize,
                     ReleaseNotes = latest.ReleaseNotes,
                     IsMandatory = latest.IsMandatory,
-                    IsFullPackage = true
+                    IsFullPackage = true,
+                    PackageHash = latest.PackageHash
                 });
             }
             catch (Exception ex)

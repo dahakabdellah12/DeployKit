@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using DeployKit.Cloud.Api.Data;
 using DeployKit.Cloud.Api.Helpers;
@@ -10,8 +11,11 @@ namespace DeployKit.Cloud.Api.Endpoints;
 public record RegisterRequest(string AppName);
 public record UpdatePackageRequest(string? Version, string? DownloadUrl, string? ReleaseNotes, bool? IsMandatory);
 
-public class AdminEndpoint
+public partial class AdminEndpoint
 {
+    [GeneratedRegex(@"^\d+\.\d+\.\d+$")]
+    private static partial Regex VersionRegex();
+
     public static void Map(WebApplication app)
     {
         var admin = app.MapGroup("/v1/admin").RequireRateLimiting("Admin");
@@ -22,6 +26,7 @@ public class AdminEndpoint
             if (user == null)
                 return Results.Json(new { error = "Unauthorized" }, statusCode: 401);
 
+            user.TokenExpires = DateTime.UtcNow.AddHours(8);
             ctx.HttpContext.Items["User"] = user;
             return await next(ctx);
         });
@@ -98,7 +103,7 @@ public class AdminEndpoint
 
                 await db.SaveChangesAsync();
 
-                await AuditHelper.LogAsync(db, "register_app", user.Username, $"App: {req.AppName}, Key: {appKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "register_app", user.Username, $"App: {req.AppName}, Key: ...{appKey[^4..]}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { appKey, appName = req.AppName });
             }
@@ -122,7 +127,7 @@ public class AdminEndpoint
                 app.AppKey = newKey;
                 await db.SaveChangesAsync();
 
-                await AuditHelper.LogAsync(db, "regenerate_key", user.Username, $"App: {app.AppName}, Old: {key}, New: {newKey}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
+                await AuditHelper.LogAsync(db, "regenerate_key", user.Username, $"App: {app.AppName}, Old: ...{key[^4..]}, New: ...{newKey[^4..]}", httpReq.HttpContext.Connection.RemoteIpAddress?.ToString());
 
                 return Results.Ok(new { appKey = newKey });
             }
@@ -176,8 +181,8 @@ public class AdminEndpoint
                 var changes = new StringBuilder();
                 if (req.Version is not null)
                 {
-                    if (string.IsNullOrWhiteSpace(req.Version))
-                        return Results.BadRequest(new { error = "Version cannot be empty" });
+                    if (!VersionRegex().IsMatch(req.Version))
+                        return Results.BadRequest(new { error = "Valid version (x.y.z) is required" });
                     changes.Append($"Version: {pkg.Version} -> {req.Version}; ");
                     pkg.Version = req.Version;
                     pkg.App.CurrentVersion = req.Version;
@@ -185,8 +190,8 @@ public class AdminEndpoint
 
                 if (req.DownloadUrl is not null)
                 {
-                    if (string.IsNullOrWhiteSpace(req.DownloadUrl))
-                        return Results.BadRequest(new { error = "Download URL cannot be empty" });
+                    if (string.IsNullOrWhiteSpace(req.DownloadUrl) || (!Uri.TryCreate(req.DownloadUrl, UriKind.Absolute, out var uri) || (uri.Scheme != "https" && uri.Scheme != "http")))
+                        return Results.BadRequest(new { error = "Valid download URL is required" });
                     changes.Append($"URL changed; ");
                     pkg.DownloadUrl = req.DownloadUrl;
                 }

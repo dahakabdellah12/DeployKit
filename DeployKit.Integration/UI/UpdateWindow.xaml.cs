@@ -40,9 +40,7 @@ public partial class UpdateWindow : Window
         var updaterPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DeployKit.Updater.exe");
         if (!File.Exists(updaterPath))
         {
-            MessageBox.Show(this,
-                $"لم يتم العثور على مشغل التحديث: {updaterPath}",
-                "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, "لم يتم العثور على مشغل التحديث.", "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -60,11 +58,9 @@ public partial class UpdateWindow : Window
                 WorkingDirectory = Path.GetDirectoryName(updaterPath)
             });
         }
-        catch (Exception ex)
+        catch
         {
-            MessageBox.Show(this,
-                $"فشل تشغيل مشغل التحديث: {ex.Message}",
-                "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, "فشل تشغيل مشغل التحديث.", "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 

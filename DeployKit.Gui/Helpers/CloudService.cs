@@ -15,7 +15,7 @@ public class CloudService
     public CloudService(string? cloudUrl = null, string? adminToken = null)
     {
         CloudUrl = cloudUrl ?? "http://localhost:5000";
-        _http = new HttpClient { Timeout = TimeSpan.FromMilliseconds(System.Threading.Timeout.Infinite) };
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         if (!string.IsNullOrEmpty(adminToken))
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
     }

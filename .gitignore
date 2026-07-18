@@ -26,3 +26,8 @@ artifacts/
 [Dd]ebug/
 [Rr]elease/
 packages/
+
+## Credential / key files (defense in depth)
+**/settings.json
+**/sdk_config.json
+**/.entropy

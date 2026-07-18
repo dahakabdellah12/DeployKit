@@ -171,7 +171,7 @@ async function showApp(key) {
             d.packages.map(p => `<tr>
               <td>${p.id}</td>
               <td><span class="badge badge-green">v${esc(p.version)}</span></td>
-              <td><a href="${esc(p.downloadUrl)}" target="_blank" style="color:#60a5fa;font-size:12px">تحميل</a></td>
+              <td>${p.downloadUrl && (p.downloadUrl.startsWith('http://') || p.downloadUrl.startsWith('https://')) ? `<a href="${esc(p.downloadUrl)}" target="_blank" style="color:#60a5fa;font-size:12px">تحميل</a>` : esc(p.downloadUrl)}</td>
               <td><span class="badge badge-blue">كاملة</span></td>
               <td>${p.isMandatory ? '<span class="badge badge-yellow">إجباري</span>' : '<span class="badge badge-gray">اختياري</span>'}</td>
               <td style="font-size:12px;color:#a1a1aa">${new Date(p.createdAt).toLocaleDateString('ar-SA')}</td>

@@ -43,6 +43,16 @@ public class PackageApplier
     {
         if (_decryptedPath != null && File.Exists(_decryptedPath))
         {
+            try
+            {
+                var fi = new FileInfo(_decryptedPath);
+                if (fi.Length > 0)
+                {
+                    using var fs = new FileStream(_decryptedPath, FileMode.Open, FileAccess.Write);
+                    fs.SetLength(0);
+                }
+            }
+            catch { }
             File.Delete(_decryptedPath);
             _decryptedPath = null;
         }

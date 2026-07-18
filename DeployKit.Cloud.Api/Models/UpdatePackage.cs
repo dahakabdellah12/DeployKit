@@ -16,6 +16,9 @@ public class UpdatePackage
 
     public long FileSize { get; set; }
 
+    [MaxLength(64)]
+    public string PackageHash { get; set; } = "";
+
     [MaxLength(2000)]
     public string ReleaseNotes { get; set; } = "";
 

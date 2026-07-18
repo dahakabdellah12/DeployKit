@@ -27,6 +27,7 @@ public partial class UploadEndpoint
                 var notes = req.Query["notes"].FirstOrDefault();
                 var mandatoryStr = req.Query["mandatory"].FirstOrDefault();
                 bool? mandatory = bool.TryParse(mandatoryStr, out var m) ? m : null;
+                var hash = req.Query["hash"].FirstOrDefault();
 
                 if (string.IsNullOrWhiteSpace(key))
                     return Results.BadRequest(new { error = "App key is required" });
@@ -51,7 +52,8 @@ public partial class UploadEndpoint
                     DownloadUrl = url,
                     ReleaseNotes = notes ?? "",
                     IsMandatory = mandatory ?? false,
-                    IsFullPackage = true
+                    IsFullPackage = true,
+                    PackageHash = hash ?? ""
                 };
 
                 db.Packages.Add(pkg);
@@ -68,7 +70,8 @@ public partial class UploadEndpoint
                     pkg.Version,
                     pkg.DownloadUrl,
                     pkg.IsMandatory,
-                    pkg.IsFullPackage
+                    pkg.IsFullPackage,
+                    pkg.PackageHash
                 });
             }
             catch (Exception ex)

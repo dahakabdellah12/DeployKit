@@ -17,6 +17,8 @@ if (!Directory.Exists(webRoot))
     webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 builder.Environment.WebRootPath = webRoot;
 
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 104_857_600);
+
 var dataDir = builder.Configuration["DataPath"] ?? "/data";
 var connStr = builder.Configuration.GetConnectionString("Sqlite");
 var connString = !string.IsNullOrWhiteSpace(connStr)
@@ -37,38 +39,48 @@ if (!string.IsNullOrWhiteSpace(connString) && connString.StartsWith("Data Source
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite(connString));
 
+builder.Services.AddCors(opt =>
+{
+    opt.AddDefaultPolicy(policy =>
+        policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost"));
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
 
-    options.AddFixedWindowLimiter("Login", opt =>
+    options.AddSlidingWindowLimiter("Login", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 5;
+        opt.SegmentsPerWindow = 4;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
 
-    options.AddFixedWindowLimiter("Upload", opt =>
+    options.AddSlidingWindowLimiter("Upload", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 10;
+        opt.SegmentsPerWindow = 4;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
 
-    options.AddFixedWindowLimiter("Api", opt =>
+    options.AddSlidingWindowLimiter("Api", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 100;
+        opt.SegmentsPerWindow = 4;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
 
-    options.AddFixedWindowLimiter("Admin", opt =>
+    options.AddSlidingWindowLimiter("Admin", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 30;
+        opt.SegmentsPerWindow = 4;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
@@ -78,6 +90,7 @@ var app = builder.Build();
 
 app.UseHsts();
 app.UseRateLimiter();
+app.UseCors();
 
 app.Use(async (ctx, next) =>
 {
@@ -99,7 +112,7 @@ app.Use(async (ctx, next) =>
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
     Directory.CreateDirectory(dataDir);
 }
 

@@ -12,6 +12,7 @@ namespace DeployKit.Gui.ViewModels;
 
 public class UploadViewModel : BaseViewModel
 {
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromMinutes(5) };
     private string _filePath = "";
     public string FilePath { get => _filePath; set { SetProperty(ref _filePath, value); UpdateCanUpload(); } }
 
@@ -177,7 +178,7 @@ public class UploadViewModel : BaseViewModel
             var repo = $"{data.GitHubUser}/{data.GitHubRepo}";
             var zipName = Path.GetFileName(FilePath);
 
-            using var client = new HttpClient { Timeout = TimeSpan.FromMilliseconds(System.Threading.Timeout.Infinite) };
+            using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
             client.DefaultRequestHeaders.UserAgent.ParseAdd("DeployKit");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GitHubToken);
 

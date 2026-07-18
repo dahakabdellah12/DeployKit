@@ -187,9 +187,8 @@ public static class DeployKit
                 });
             }
         }
-        catch (Exception ex)
+        catch
         {
-            System.Diagnostics.Debug.WriteLine($"[DeployKit] Auto-check failed: {ex.Message}");
         }
     }
 }

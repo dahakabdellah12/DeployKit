@@ -13,6 +13,7 @@ namespace DeployKit.Gui.ViewModels;
 
 public class BuildViewModel : BaseViewModel
 {
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromMinutes(5) };
     private readonly PackageBuilder _builder = new();
     private readonly Action<ReleaseRecord>? _onReleaseCreated;
 
@@ -215,7 +216,7 @@ public class BuildViewModel : BaseViewModel
             var repo = $"{data.GitHubUser}/{data.GitHubRepo}";
             var zipName = $"{AppName}_v{Version}.zip";
 
-            using var client = new HttpClient { Timeout = TimeSpan.FromMilliseconds(System.Threading.Timeout.Infinite) };
+            using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
             client.DefaultRequestHeaders.UserAgent.ParseAdd("DeployKit");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GitHubToken);
 
@@ -266,6 +267,12 @@ public class BuildViewModel : BaseViewModel
             record.CreatedGitHubRelease = true;
 
             data.GitHubRawUrl = downloadUrl;
+            data.GitHubTokenEncrypted = SecureStorage.Encrypt(data.GitHubToken);
+            data.GitHubToken = null;
+            data.ApiKeyEncrypted = SecureStorage.Encrypt(data.ApiKey);
+            data.ApiKey = null;
+            data.AdminTokenEncrypted = SecureStorage.Encrypt(data.AdminToken);
+            data.AdminToken = null;
             var savePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "DeployKit", "settings.json");

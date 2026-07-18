@@ -17,5 +17,9 @@ public class User
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public DateTime TokenExpires { get; set; } = DateTime.UtcNow.AddDays(90);
+    public DateTime TokenExpires { get; set; } = DateTime.UtcNow.AddHours(8);
+
+    public int FailedLoginAttempts { get; set; }
+
+    public DateTime? LockedUntilUtc { get; set; }
 }
