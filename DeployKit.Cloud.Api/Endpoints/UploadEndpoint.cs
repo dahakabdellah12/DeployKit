@@ -24,10 +24,18 @@ public partial class UploadEndpoint
                 var key = req.Headers["X-Api-Key"].FirstOrDefault();
                 var version = req.Query["version"].FirstOrDefault();
                 var url = req.Query["url"].FirstOrDefault();
-                var notes = req.Query["notes"].FirstOrDefault();
+                var notes = (req.Query["notes"].FirstOrDefault() ?? "").Trim();
+                if (notes.Length > 2000)
+                    return Results.BadRequest(new { error = "Release notes must be at most 2000 characters" });
+
                 var mandatoryStr = req.Query["mandatory"].FirstOrDefault();
                 bool? mandatory = bool.TryParse(mandatoryStr, out var m) ? m : null;
-                var hash = req.Query["hash"].FirstOrDefault();
+                var hash = (req.Query["hash"].FirstOrDefault() ?? "").Trim();
+                if (hash.Length > 64)
+                    return Results.BadRequest(new { error = "Package hash must be at most 64 characters" });
+
+                if (!string.IsNullOrEmpty(hash) && !Regex.IsMatch(hash, @"^[A-Fa-f0-9]+$"))
+                    return Results.BadRequest(new { error = "Package hash must be a valid hex string" });
 
                 if (string.IsNullOrWhiteSpace(key))
                     return Results.BadRequest(new { error = "App key is required" });
@@ -50,10 +58,10 @@ public partial class UploadEndpoint
                     AppId = appReg.Id,
                     Version = version,
                     DownloadUrl = url,
-                    ReleaseNotes = notes ?? "",
+                    ReleaseNotes = notes,
                     IsMandatory = mandatory ?? false,
                     IsFullPackage = true,
-                    PackageHash = hash ?? ""
+                    PackageHash = hash
                 };
 
                 db.Packages.Add(pkg);

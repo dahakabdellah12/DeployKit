@@ -93,6 +93,9 @@ public partial class AdminEndpoint
                 if (string.IsNullOrWhiteSpace(req.AppName))
                     return Results.BadRequest(new { error = "App name is required" });
 
+                if (req.AppName.Length > 128)
+                    return Results.BadRequest(new { error = "App name must be at most 128 characters" });
+
                 var appKey = Guid.NewGuid().ToString("N");
                 db.Apps.Add(new AppRegistration
                 {
@@ -198,6 +201,8 @@ public partial class AdminEndpoint
 
                 if (req.ReleaseNotes is not null)
                 {
+                    if (req.ReleaseNotes.Length > 2000)
+                        return Results.BadRequest(new { error = "Release notes must be at most 2000 characters" });
                     changes.Append("ReleaseNotes updated; ");
                     pkg.ReleaseNotes = req.ReleaseNotes;
                 }

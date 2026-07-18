@@ -19,6 +19,7 @@ Thumbs.db
 ## Secrets & deployment config
 *.env
 appsettings.*.local.json
+appsettings.Production.json
 
 ## Runtime / Build output
 dist/

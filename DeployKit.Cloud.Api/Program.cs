@@ -42,7 +42,7 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 builder.Services.AddCors(opt =>
 {
     opt.AddDefaultPolicy(policy =>
-        policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost"));
+        policy.SetIsOriginAllowed(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.Host == "localhost"));
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -89,6 +89,7 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 
 app.UseHsts();
+app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseCors();
 

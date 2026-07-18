@@ -150,6 +150,15 @@ public static class DeployKit
             };
 
             File.WriteAllText(RollbackInfoPath, JsonSerializer.Serialize(info));
+
+            try
+            {
+                var attrs = File.GetAttributes(RollbackInfoPath);
+                File.SetAttributes(RollbackInfoPath, attrs | FileAttributes.Encrypted);
+            }
+            catch
+            {
+            }
         }
         catch
         {

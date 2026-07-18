@@ -109,6 +109,13 @@ public class PackageApplier
                     Directory.CreateDirectory(dir);
 
                 await RetryableWriteAsync(fullPath, entry.Open);
+
+                if (!string.IsNullOrEmpty(added.Hash))
+                {
+                    var actualHash = await _hashService.ComputeHashAsync(fullPath);
+                    if (!string.Equals(actualHash, added.Hash, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException($"Hash mismatch for {added.Path}: expected {added.Hash}, got {actualHash}");
+                }
             }
 
             var tempDir = Path.Combine(Path.GetTempPath(), "DeployKit", Guid.NewGuid().ToString("N"));
@@ -134,6 +141,13 @@ public class PackageApplier
                         await RetryableWriteAsync(patchFile, patchEntry.Open);
 
                         await _patchService.ApplyPatchAsync(oldFile, patchFile, fullPath);
+
+                        if (!string.IsNullOrEmpty(modified.NewHash))
+                        {
+                            var actualHash = await _hashService.ComputeHashAsync(fullPath);
+                            if (!string.Equals(actualHash, modified.NewHash, StringComparison.OrdinalIgnoreCase))
+                                throw new InvalidOperationException($"Hash mismatch for {modified.Path}: expected {modified.NewHash}, got {actualHash}");
+                        }
                     }
                     else
                     {
@@ -141,6 +155,13 @@ public class PackageApplier
                             ?? throw new InvalidOperationException($"File not found in package: {modified.Path}");
 
                         await RetryableWriteAsync(fullPath, entry.Open);
+
+                        if (!string.IsNullOrEmpty(modified.NewHash))
+                        {
+                            var actualHash = await _hashService.ComputeHashAsync(fullPath);
+                            if (!string.Equals(actualHash, modified.NewHash, StringComparison.OrdinalIgnoreCase))
+                                throw new InvalidOperationException($"Hash mismatch for {modified.Path}: expected {modified.NewHash}, got {actualHash}");
+                        }
                     }
                 }
             }
@@ -197,6 +218,13 @@ public class PackageApplier
                     Directory.CreateDirectory(dir);
 
                 await RetryableWriteAsync(fullPath, entry.Open);
+
+                if (!string.IsNullOrEmpty(file.Hash))
+                {
+                    var actualHash = await _hashService.ComputeHashAsync(fullPath);
+                    if (!string.Equals(actualHash, file.Hash, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException($"Hash mismatch for {file.Path}: expected {file.Hash}, got {actualHash}");
+                }
             }
 
             foreach (var existingFile in Directory.GetFiles(targetDir, "*", SearchOption.AllDirectories))

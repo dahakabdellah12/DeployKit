@@ -1,0 +1,19 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.cs text diff=csharp
+*.js text
+*.html text
+*.css text
+*.json text
+*.yml text
+*.yaml text
+*.md text
+
+# Binary files
+*.zip binary
+*.nupkg binary
+*.png binary
+*.jpg binary
+*.ico binary

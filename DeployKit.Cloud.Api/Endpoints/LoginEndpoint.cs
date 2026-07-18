@@ -112,7 +112,7 @@ public partial class LoginEndpoint
                 logger.LogError(ex, "Refresh failed");
                 return Results.Problem(detail: "Internal server error", statusCode: 500);
             }
-        });
+        }).RequireRateLimiting("Admin");
 
         app.MapPost("/v1/admin/logout", async (HttpRequest httpReq, AppDbContext db, ILogger<LoginEndpoint> logger) =>
         {

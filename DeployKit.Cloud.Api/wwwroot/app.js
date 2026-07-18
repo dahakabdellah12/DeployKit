@@ -51,7 +51,7 @@ async function logout() {
   showLogin();
 }
 
-function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => {
@@ -123,7 +123,7 @@ function renderApps(apps) {
       <td><a href="#" class="app-link" data-app-key="${esc(a.appKey)}" style="color:#60a5fa;text-decoration:none">${esc(a.appName)}</a></td>
       <td style="font-family:monospace;font-size:12px">${esc(a.appKey)}</td>
       <td><span class="badge badge-green">v${esc(a.currentVersion)}</span></td>
-      <td>${a.packageCount}</td>
+      <td>${esc(String(a.packageCount))}</td>
       <td style="font-size:12px;color:#a1a1aa">${new Date(a.createdAt).toLocaleDateString('ar-SA')}</td>
       <td><button class="btn btn-danger btn-sm btn-delete-app" data-app-key="${esc(a.appKey)}">حذف</button></td>
     </tr>`;
@@ -169,15 +169,15 @@ async function showApp(key) {
           <tbody>
             ${d.packages.length === 0 ? '<tr><td colspan="7" class="empty">لا توجد تحديثات</td></tr>' :
             d.packages.map(p => `<tr>
-              <td>${p.id}</td>
+              <td>${esc(String(p.id))}</td>
               <td><span class="badge badge-green">v${esc(p.version)}</span></td>
               <td>${p.downloadUrl && (p.downloadUrl.startsWith('http://') || p.downloadUrl.startsWith('https://')) ? `<a href="${esc(p.downloadUrl)}" target="_blank" style="color:#60a5fa;font-size:12px">تحميل</a>` : esc(p.downloadUrl)}</td>
               <td><span class="badge badge-blue">كاملة</span></td>
               <td>${p.isMandatory ? '<span class="badge badge-yellow">إجباري</span>' : '<span class="badge badge-gray">اختياري</span>'}</td>
               <td style="font-size:12px;color:#a1a1aa">${new Date(p.createdAt).toLocaleDateString('ar-SA')}</td>
               <td style="white-space:nowrap">
-                <button class="btn btn-sm btn-edit-pkg" data-pkg-id="${p.id}" style="background:#1e3a5f;color:#93c5fd;margin-left:4px">تعديل</button>
-                <button class="btn btn-danger btn-sm btn-delete-pkg" data-pkg-id="${p.id}">حذف</button>
+                <button class="btn btn-sm btn-edit-pkg" data-pkg-id="${esc(String(p.id))}" style="background:#1e3a5f;color:#93c5fd;margin-left:4px">تعديل</button>
+                <button class="btn btn-danger btn-sm btn-delete-pkg" data-pkg-id="${esc(String(p.id))}">حذف</button>
               </td>
             </tr>`).join('')}
           </tbody>
